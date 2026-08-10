@@ -14,18 +14,40 @@
   const els = {
     loading: document.getElementById("loading"),
     main: document.getElementById("screen-main"),
+
+    discountChip: document.getElementById("discount-chip"),
+
     balance: document.getElementById("balance"),
     discount: document.getElementById("discount"),
-    subExpiry: document.getElementById("sub-expiry"),
+    topupShortcut: document.getElementById("topup-shortcut"),
+    promoShortcut: document.getElementById("promo-shortcut"),
+
+    ringSvg: document.getElementById("ring-svg"),
+    daysLeft: document.getElementById("days-left"),
+    subPlanName: document.getElementById("sub-plan-name"),
+    subPlanDate: document.getElementById("sub-plan-date"),
+    manageBtn: document.getElementById("manage-btn"),
+
+    autorenewCard: document.getElementById("autorenew-card"),
+    autorenewDot: document.getElementById("autorenew-dot"),
+    autorenewSub: document.getElementById("autorenew-sub"),
+    autorenewToggleBtn: document.getElementById("autorenew-toggle-btn"),
+
     subUrlBlock: document.getElementById("sub-url-block"),
     subUrl: document.getElementById("sub-url"),
     copySubUrl: document.getElementById("copy-sub-url"),
+
+    plansTitle: document.getElementById("plans-title"),
     plansList: document.getElementById("plans-list"),
+
     topupPresets: document.getElementById("topup-presets"),
     topupCustom: document.getElementById("topup-custom"),
     topupBtn: document.getElementById("topup-btn"),
+
+    promoTitle: document.getElementById("promo-title"),
     promoInput: document.getElementById("promo-input"),
     promoBtn: document.getElementById("promo-btn"),
+
     devicesText: document.getElementById("devices-text"),
     toast: document.getElementById("toast"),
   };
@@ -66,6 +88,48 @@
     return d.toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
   }
 
+  function fmtDateShort(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    return "до " + d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  function daysLeftFrom(iso) {
+    if (!iso) return 0;
+    const diffMs = new Date(iso).getTime() - Date.now();
+    return Math.max(0, Math.ceil(diffMs / (24 * 60 * 60 * 1000)));
+  }
+
+  // ---------- dotted progress ring ----------
+  // Плановая длительность подписки бэкенду неизвестна фронтенду напрямую,
+  // поэтому прогресс считается относительно скользящего 30-дневного цикла
+  // (типичная длительность тарифа). Если дней остаётся больше — кольцо просто полное.
+  const RING_CYCLE_DAYS = 30;
+  const RING_DOTS = 48;
+  const RING_RADIUS = 52;
+  const RING_CENTER = 60;
+
+  function renderRing(daysLeft) {
+    const svg = els.ringSvg;
+    svg.innerHTML = "";
+    const progress = Math.max(0, Math.min(1, daysLeft / RING_CYCLE_DAYS));
+    const filledDots = Math.round(progress * RING_DOTS);
+
+    for (let i = 0; i < RING_DOTS; i++) {
+      const angle = (Math.PI * 2 * i) / RING_DOTS - Math.PI / 2;
+      const x = RING_CENTER + RING_RADIUS * Math.cos(angle);
+      const y = RING_CENTER + RING_RADIUS * Math.sin(angle);
+      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+      dot.setAttribute("cx", x.toFixed(2));
+      dot.setAttribute("cy", y.toFixed(2));
+      dot.setAttribute("r", "2.6");
+      dot.setAttribute("fill", i < filledDots ? "var(--accent-ink)" : "rgba(14,18,6,0.22)");
+      svg.appendChild(dot);
+    }
+  }
+
+  // ---------- profile / subscription ----------
+
   let cachedPlans = [];
   let cachedProfile = null;
 
@@ -74,15 +138,73 @@
     els.balance.textContent = Math.round(profile.balance) + " ₽";
     els.discount.textContent = profile.discount_percent > 0 ? profile.discount_percent + "%" : "нет";
 
-    if (profile.subscription) {
-      els.subExpiry.textContent = fmtDate(profile.subscription.expires_at) + (profile.subscription.active ? "" : " (истекла)");
-      if (profile.subscription.subscription_url) {
+    if (profile.discount_percent > 0) {
+      els.discountChip.textContent = "-" + profile.discount_percent + "%";
+      els.discountChip.classList.remove("hidden");
+    } else {
+      els.discountChip.classList.add("hidden");
+    }
+
+    const sub = profile.subscription;
+    const active = !!(sub && sub.active);
+    const days = active ? daysLeftFrom(sub.expires_at) : 0;
+
+    els.daysLeft.textContent = active ? days : 0;
+    renderRing(active ? days : 0);
+
+    if (sub) {
+      els.subPlanName.textContent = active ? "Подписка активна" : "Подписка истекла";
+      els.subPlanDate.textContent = fmtDateShort(sub.expires_at);
+      if (sub.subscription_url) {
         els.subUrlBlock.classList.remove("hidden");
-        els.subUrl.textContent = profile.subscription.subscription_url;
+        els.subUrl.textContent = sub.subscription_url;
+      } else {
+        els.subUrlBlock.classList.add("hidden");
       }
     } else {
-      els.subExpiry.textContent = "нет активной подписки";
+      els.subPlanName.textContent = "Нет подписки";
+      els.subPlanDate.textContent = "Выберите тариф ниже";
       els.subUrlBlock.classList.add("hidden");
+    }
+
+    renderAutoRenew(profile);
+  }
+
+  // Бэкенд в этой версии API не отдаёт поле автопродления явно.
+  // Блок рассчитан на необязательное поле profile.auto_renew (true/false).
+  // Пока бэкенд его не присылает — показываем нейтральный статус без переключателя,
+  // чтобы не врать пользователю. Как только API станет отдавать auto_renew
+  // (и появится эндпоинт POST /api/auto-renew), кнопка-переключатель включится сама.
+  function renderAutoRenew(profile) {
+    const hasField = typeof profile.auto_renew === "boolean";
+    const sub = profile.subscription;
+    const hasActiveSub = !!(sub && sub.active);
+
+    if (!hasField) {
+      els.autorenewDot.className = "autorenew-dot";
+      els.autorenewSub.textContent = hasActiveSub
+        ? "Продлевайте вручную на странице тарифов"
+        : "Появится после активации тарифа";
+      els.autorenewToggleBtn.classList.add("hidden");
+      return;
+    }
+
+    const on = profile.auto_renew === true;
+    els.autorenewDot.className = "autorenew-dot " + (on ? "on" : "off");
+    els.autorenewSub.textContent = on ? "Включено — спишем с баланса автоматически" : "Выключено — продлевайте вручную";
+    els.autorenewToggleBtn.textContent = on ? "Выключить" : "Включить";
+    els.autorenewToggleBtn.className = "autorenew-toggle-btn" + (on ? " is-on" : "");
+    els.autorenewToggleBtn.classList.remove("hidden");
+    els.autorenewToggleBtn.onclick = () => toggleAutoRenew(!on);
+  }
+
+  async function toggleAutoRenew(nextValue) {
+    try {
+      await api("/api/auto-renew", { method: "POST", body: JSON.stringify({ enabled: nextValue }) });
+      showToast(nextValue ? "Автопродление включено" : "Автопродление выключено");
+      await refreshProfile();
+    } catch (e) {
+      showToast(e.message, true);
     }
   }
 
@@ -242,6 +364,14 @@
     if (navigator.clipboard) navigator.clipboard.writeText(text);
     showToast("Скопировано");
   };
+
+  function scrollToSection(el) {
+    if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  els.manageBtn.onclick = () => scrollToSection(els.plansTitle);
+  els.topupShortcut.onclick = () => scrollToSection(els.topupPresets);
+  els.promoShortcut.onclick = () => scrollToSection(els.promoTitle);
 
   async function init() {
     if (!API_BASE_URL || API_BASE_URL.indexOf("example.com") !== -1) {

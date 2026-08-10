@@ -12,10 +12,53 @@
     <div id="loading" class="screen">Загрузка…</div>
 
     <div id="screen-main" class="screen hidden">
-      <div class="card profile-card">
-        <div class="profile-row"><span>Баланс</span><b id="balance">—</b></div>
-        <div class="profile-row"><span>Скидка</span><b id="discount">—</b></div>
-        <div class="profile-row"><span>Подписка до</span><b id="sub-expiry">—</b></div>
+
+      <header class="topbar">
+        <div class="brand">
+          <svg class="brand-mark" viewBox="0 0 24 24" width="22" height="22">
+            <circle cx="9" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="2"/>
+            <circle cx="15" cy="12" r="7" fill="var(--accent)" fill-opacity="0.9"/>
+          </svg>
+          <span>Мой VPN</span>
+        </div>
+        <div class="discount-chip hidden" id="discount-chip"></div>
+      </header>
+
+      <div class="hero-grid">
+        <div class="hero-side">
+          <div class="card mini-card">
+            <div class="mini-label">Баланс</div>
+            <div class="mini-value" id="balance">—</div>
+            <button class="mini-btn" id="topup-shortcut">Пополнить</button>
+          </div>
+          <div class="card mini-card">
+            <div class="mini-label">Скидка</div>
+            <div class="mini-value" id="discount">—</div>
+            <button class="mini-btn ghost" id="promo-shortcut">Промокод</button>
+          </div>
+        </div>
+
+        <div class="card sub-card">
+          <div class="ring-wrap">
+            <svg class="ring-svg" id="ring-svg" viewBox="0 0 120 120"></svg>
+            <div class="ring-center">
+              <div class="ring-number" id="days-left">—</div>
+              <div class="ring-label">дней</div>
+            </div>
+          </div>
+          <div class="sub-plan-name" id="sub-plan-name">—</div>
+          <div class="sub-plan-date" id="sub-plan-date">—</div>
+          <button class="btn-manage" id="manage-btn">Управлять</button>
+        </div>
+      </div>
+
+      <div class="card autorenew-card" id="autorenew-card">
+        <span class="autorenew-dot" id="autorenew-dot"></span>
+        <div class="autorenew-text">
+          <div class="autorenew-title">Автопродление</div>
+          <div class="autorenew-sub" id="autorenew-sub">—</div>
+        </div>
+        <button class="autorenew-toggle-btn hidden" id="autorenew-toggle-btn"></button>
       </div>
 
       <div id="sub-url-block" class="card hidden">
@@ -24,7 +67,7 @@
         <button class="btn secondary" id="copy-sub-url">Скопировать</button>
       </div>
 
-      <div class="section-title">Тарифы</div>
+      <div class="section-title" id="plans-title">Тарифы</div>
       <div id="plans-list"></div>
 
       <div class="section-title">Пополнить баланс</div>
@@ -34,7 +77,7 @@
         <button class="btn" id="topup-btn">Пополнить</button>
       </div>
 
-      <div class="section-title">Промокод</div>
+      <div class="section-title" id="promo-title">Промокод</div>
       <div class="row">
         <input id="promo-input" type="text" placeholder="Введите код" />
         <button class="btn" id="promo-btn">Активировать</button>
