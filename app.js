@@ -7,9 +7,137 @@
   if (tg) {
     tg.ready();
     tg.expand();
+    // Тема приложения зафиксирована на тёмную — принудительно красим системную
+    // шапку/фон Telegram-WebView, чтобы они не подстраивались под светлую тему
+    // пользователя и не спорили с нашим тёмным дизайном.
+    try {
+      if (tg.setHeaderColor) tg.setHeaderColor("#0b0c0b");
+      if (tg.setBackgroundColor) tg.setBackgroundColor("#0b0c0b");
+    } catch (e) {
+      /* старые клиенты Telegram могут не поддерживать эти методы */
+    }
   }
 
   const initData = tg ? tg.initData : "";
+
+  // ---------- авторизация в обычном браузере (вне Telegram Mini App) ----------
+  // Если приложение открыто не внутри Telegram (initData пуст), используем
+  // сессию браузера: либо уже сохранённый токен из прошлого визита, либо
+  // свежий login_token в URL — он приходит по одноразовой ссылке из бота
+  // (см. handlers/user.py: /start weblogin), которую сайт предлагает открыть
+  // кнопкой "Войти через Telegram", если сессии ещё нет.
+  const BOT_USERNAME = window.__BOT_USERNAME__ || "";
+  const SESSION_STORAGE_KEY = "vpn_session_token";
+  let sessionToken = initData ? null : localStorage.getItem(SESSION_STORAGE_KEY) || null;
+
+  const authParams = new URLSearchParams(window.location.search);
+  const incomingLoginToken = authParams.get("login_token");
+  if (incomingLoginToken) {
+    // сразу убираем токен из адреса — он одноразовый, повторное чтение
+    // страницы с тем же URL не должно пытаться использовать его снова
+    authParams.delete("login_token");
+    const restAuthParams = authParams.toString();
+    const cleanAuthUrl =
+      window.location.pathname + (restAuthParams ? "?" + restAuthParams : "") + window.location.hash;
+    window.history.replaceState({}, "", cleanAuthUrl);
+  }
+
+  async function ensureBrowserAuth() {
+    if (initData) return true; // внутри Telegram Mini App — авторизация через initData, тут делать нечего
+    if (sessionToken) return true;
+    if (!incomingLoginToken) return false;
+
+    try {
+      const resp = await fetch(API_BASE_URL + "/api/browser-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ token: incomingLoginToken }),
+      });
+      const data = await resp.json().catch(() => null);
+      if (!resp.ok) throw new Error((data && data.error) || "Не удалось войти");
+      sessionToken = data.session_token;
+      localStorage.setItem(SESSION_STORAGE_KEY, sessionToken);
+      return true;
+    } catch (e) {
+      els.loading.textContent =
+        "Не удалось войти: " + e.message + ". Запросите новую ссылку в боте (/start weblogin).";
+      return false;
+    }
+  }
+
+  function showBrowserLoginScreen() {
+    if (BOT_USERNAME) {
+      const loginUrl = "https://t.me/" + BOT_USERNAME + "?start=weblogin";
+      els.loading.innerHTML =
+        '<div>Откройте личный кабинет через Telegram:</div>' +
+        '<a class="btn btn-standalone" href="' +
+        loginUrl +
+        '" target="_blank" rel="noopener">Войти через Telegram</a>';
+    } else {
+      els.loading.textContent = "Откройте мини-приложение через кнопку в Telegram-боте.";
+    }
+  }
+
+  // ---------- popup с результатом активации промокода ----------
+  // Кнопка "Активировать" промокода (в боте) ведёт сюда с параметром
+  // ?promo_popup=..., чтобы результат показывался всплывающим окном внутри
+  // приложения, а не отдельным сообщением в чате бота.
+  const promoPopupParams = new URLSearchParams(window.location.search);
+  const promoPopupText = promoPopupParams.get("promo_popup");
+  if (promoPopupText) {
+    // сразу убираем параметр из адреса, чтобы обновление страницы или
+    // возврат назад не показывали окно повторно
+    promoPopupParams.delete("promo_popup");
+    const restParams = promoPopupParams.toString();
+    const cleanUrl =
+      window.location.pathname + (restParams ? "?" + restParams : "") + window.location.hash;
+    window.history.replaceState({}, "", cleanUrl);
+  }
+
+  function showTgPopup(title, message) {
+    if (tg && tg.showPopup) {
+      tg.showPopup({ title: title, message: message });
+    } else if (tg && tg.showAlert) {
+      tg.showAlert(message);
+    } else {
+      window.alert(message);
+    }
+  }
+
+  function showPromoPopupIfAny() {
+    if (!promoPopupText) return;
+    showTgPopup("🎁 Промокод", promoPopupText);
+  }
+
+  // ---------- автоактивация промокода при открытии по прямой ссылке ----------
+  // Кнопка "Активировать" (t.me/<bot>/<short_name>?startapp=promo_<CODE>)
+  // открывает приложение сразу, минуя чат с ботом. Telegram передаёт код
+  // приложению через initDataUnsafe.start_param — сами вызываем /api/promo
+  // и показываем результат попапом.
+  const startParam = tg && tg.initDataUnsafe ? tg.initDataUnsafe.start_param || "" : "";
+  const autoPromoCode = startParam.indexOf("promo_") === 0 ? startParam.slice("promo_".length) : null;
+
+  function shortenForPopup(text) {
+    // showPopup ограничен 256 символами, а ссылка-подписка и так видна на
+    // главном экране приложения — обрезаем текст на этой строке (если есть)
+    // и подстраховываемся на случай других длинных сообщений.
+    const lines = text.split("\n");
+    const cutIdx = lines.findIndex((l) => l.indexOf("Ваша ссылка-подписка") === 0);
+    const kept = cutIdx === -1 ? lines : lines.slice(0, cutIdx);
+    let result = kept.join("\n").trim();
+    if (result.length > 250) result = result.slice(0, 247).trim() + "...";
+    return result;
+  }
+
+  async function redeemPromoFromStartParam(code) {
+    try {
+      const result = await api("/api/promo", { method: "POST", body: JSON.stringify({ code: code }) });
+      await refreshProfile();
+      showTgPopup("🎁 Промокод", shortenForPopup(result.message));
+    } catch (e) {
+      showTgPopup("Промокод", "❌ " + e.message);
+    }
+  }
 
   const els = {
     loading: document.getElementById("loading"),
@@ -36,6 +164,8 @@
     subUrlBlock: document.getElementById("sub-url-block"),
     subUrl: document.getElementById("sub-url"),
     copySubUrl: document.getElementById("copy-sub-url"),
+    shareSubUrl: document.getElementById("share-sub-url"),
+    connectNoSub: document.getElementById("connect-no-sub"),
 
     plansTitle: document.getElementById("plans-title"),
     plansList: document.getElementById("plans-list"),
@@ -49,6 +179,24 @@
     promoBtn: document.getElementById("promo-btn"),
 
     devicesText: document.getElementById("devices-text"),
+
+    payModal: document.getElementById("pay-modal"),
+    payModalPlan: document.getElementById("pay-modal-plan"),
+    payModalMethod: document.getElementById("pay-modal-method"),
+    payModalPrice: document.getElementById("pay-modal-price"),
+    payModalCancel: document.getElementById("pay-modal-cancel"),
+    payModalConfirm: document.getElementById("pay-modal-confirm"),
+
+    aboutName: document.getElementById("about-name"),
+    aboutSupport: document.getElementById("about-support"),
+    browserLogoutBtn: document.getElementById("browser-logout-btn"),
+
+    accountTgId: document.getElementById("account-tg-id"),
+    accountUsername: document.getElementById("account-username"),
+
+    bottomNav: document.getElementById("bottom-nav"),
+    navItems: document.querySelectorAll(".nav-item"),
+
     toast: document.getElementById("toast"),
   };
 
@@ -67,7 +215,11 @@
   async function api(path, options) {
     options = options || {};
     const headers = Object.assign({ "Content-Type": "application/json" }, options.headers || {});
-    if (initData) headers["Authorization"] = "tma " + initData;
+    if (initData) {
+      headers["Authorization"] = "tma " + initData;
+    } else if (sessionToken) {
+      headers["Authorization"] = "Bearer " + sessionToken;
+    }
 
     const resp = await fetch(API_BASE_URL + path, Object.assign({}, options, { headers }));
     let data = null;
@@ -77,6 +229,11 @@
       /* пустой ответ (напр. OPTIONS) */
     }
     if (!resp.ok) {
+      if (resp.status === 401 && !initData) {
+        // сессия браузера протухла или была отозвана — просим войти заново
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+        sessionToken = null;
+      }
       throw new Error((data && data.error) || "Ошибка сервера (" + resp.status + ")");
     }
     return data;
@@ -158,16 +315,33 @@
       if (sub.subscription_url) {
         els.subUrlBlock.classList.remove("hidden");
         els.subUrl.textContent = sub.subscription_url;
+        els.connectNoSub.classList.add("hidden");
       } else {
         els.subUrlBlock.classList.add("hidden");
+        els.connectNoSub.classList.remove("hidden");
       }
     } else {
       els.subPlanName.textContent = "Нет подписки";
       els.subPlanDate.textContent = "Выберите тариф ниже";
       els.subUrlBlock.classList.add("hidden");
+      els.connectNoSub.classList.remove("hidden");
     }
 
     renderAutoRenew(profile);
+    renderAbout(profile);
+    renderAccount(profile);
+  }
+
+  function renderAbout(profile) {
+    els.aboutName.textContent = profile.vpn_name || "VPN-сервис";
+    els.aboutSupport.textContent = profile.support_username
+      ? "По всем вопросам пишите: @" + profile.support_username
+      : "Поддержка временно недоступна.";
+  }
+
+  function renderAccount(profile) {
+    els.accountTgId.textContent = profile.tg_id != null ? String(profile.tg_id) : "—";
+    els.accountUsername.textContent = profile.username ? "@" + profile.username : "—";
   }
 
   // Бэкенд в этой версии API не отдаёт поле автопродления явно.
@@ -208,6 +382,14 @@
     }
   }
 
+  // Подписи способов оплаты — используются и на кнопках выбора, и в модалке подтверждения
+  const PAY_METHOD_LABELS = {
+    free: "🎁 Бесплатно (по скидке)",
+    balance: "💰 С баланса",
+    cryptobot: "💎 Крипта (CryptoBot)",
+    lava: "💳 Карта / СБП (LAVA)",
+  };
+
   function planPayButtons(plan) {
     const discount = cachedProfile ? cachedProfile.discount_percent : 0;
     const factor = discount > 0 ? Math.max(0, 1 - discount / 100) : 1;
@@ -219,18 +401,57 @@
     const wrap = document.createElement("div");
     wrap.className = "pay-methods";
 
+    const priceText = (provider) =>
+      provider === "balance" || provider === "lava" ? priceRub + " ₽" : priceUsdt + " USDT";
+
     if (isFree) {
-      wrap.appendChild(makeBtn("🎁 Бесплатно", () => purchase(plan.code, "free")));
+      wrap.appendChild(
+        makeBtn("🎁 Бесплатно", () => openPayConfirm(plan, "free", "Бесплатно"))
+      );
       return wrap;
     }
 
     if (balanceEnough) {
-      wrap.appendChild(makeBtn("💰 С баланса", () => purchase(plan.code, "balance")));
+      wrap.appendChild(
+        makeBtn("💰 С баланса", () => openPayConfirm(plan, "balance", priceText("balance")))
+      );
     }
-    wrap.appendChild(makeBtn("💎 Крипта", () => purchase(plan.code, "cryptobot"), "secondary"));
-    wrap.appendChild(makeBtn("💳 LAVA", () => purchase(plan.code, "lava"), "secondary"));
+    wrap.appendChild(
+      makeBtn("💎 Крипта", () => openPayConfirm(plan, "cryptobot", priceText("cryptobot")), "secondary")
+    );
+    wrap.appendChild(
+      makeBtn("💳 LAVA", () => openPayConfirm(plan, "lava", priceText("lava")), "secondary")
+    );
     return wrap;
   }
+
+  // ---------- экран подтверждения перед оплатой: товар — цена — кнопка «Оплатить» ----------
+  let pendingPurchase = null; // { planCode, provider }
+
+  function openPayConfirm(plan, provider, priceText) {
+    pendingPurchase = { planCode: plan.code, provider: provider };
+    els.payModalPlan.textContent = plan.title;
+    els.payModalMethod.textContent = PAY_METHOD_LABELS[provider] || provider;
+    els.payModalPrice.textContent = priceText;
+    els.payModalConfirm.textContent = provider === "free" ? "Активировать" : "Оплатить";
+    els.payModal.classList.remove("hidden");
+  }
+
+  function closePayConfirm() {
+    pendingPurchase = null;
+    els.payModal.classList.add("hidden");
+  }
+
+  els.payModalCancel.onclick = closePayConfirm;
+  els.payModal.onclick = (e) => {
+    if (e.target === els.payModal) closePayConfirm(); // клик по затемнению — тоже отмена
+  };
+  els.payModalConfirm.onclick = () => {
+    if (!pendingPurchase) return;
+    const { planCode, provider } = pendingPurchase;
+    closePayConfirm();
+    purchase(planCode, provider);
+  };
 
   function makeBtn(text, onClick, cls) {
     const btn = document.createElement("button");
@@ -359,29 +580,125 @@
     }
   };
 
+  els.browserLogoutBtn.onclick = async () => {
+    try {
+      await api("/api/logout", { method: "POST" });
+    } catch (e) {
+      /* сессия и так протухла/невалидна — всё равно чистим локально */
+    }
+    localStorage.removeItem(SESSION_STORAGE_KEY);
+    window.location.href = window.location.pathname;
+  };
+
   els.copySubUrl.onclick = () => {
     const text = els.subUrl.textContent;
     if (navigator.clipboard) navigator.clipboard.writeText(text);
     showToast("Скопировано");
   };
 
+  els.shareSubUrl.onclick = () => {
+    const url = els.subUrl.textContent;
+    if (!url) return;
+    const shareText = "🐸 Моя VPN-подписка";
+    const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(url) + "&text=" + encodeURIComponent(shareText);
+    if (tg) {
+      tg.openTelegramLink(shareUrl);
+    } else if (navigator.share) {
+      navigator.share({ title: shareText, url: url }).catch(() => {});
+    } else {
+      if (navigator.clipboard) navigator.clipboard.writeText(url);
+      showToast("Скопировано — отправьте ссылку вручную");
+    }
+  };
+
   function scrollToSection(el) {
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
-  els.manageBtn.onclick = () => scrollToSection(els.plansTitle);
-  els.topupShortcut.onclick = () => scrollToSection(els.topupPresets);
-  els.promoShortcut.onclick = () => scrollToSection(els.promoTitle);
+  // ---------- страницы (нижняя навигация переключает их, без скролла по одной длинной странице) ----------
+
+  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card"];
+  const pageEls = {};
+  PAGE_IDS.forEach((id) => {
+    pageEls[id] = document.querySelector('.page[data-page="' + id + '"]');
+  });
+
+  const navIndicator = document.getElementById("nav-indicator");
+  let currentNavTarget = null;
+
+  function moveNavIndicator(skipAnim) {
+    if (!navIndicator) return;
+    const activeBtn = Array.from(els.navItems).find((b) => b.classList.contains("active"));
+    if (!activeBtn) return;
+    const x = activeBtn.offsetLeft;
+    navIndicator.style.width = activeBtn.offsetWidth + "px";
+    navIndicator.classList.toggle("no-anim", !!skipAnim);
+    navIndicator.style.transform = "translateX(" + x + "px)";
+    if (skipAnim) {
+      // форсируем применение стилей без анимации, затем возвращаем transition
+      void navIndicator.offsetWidth;
+      navIndicator.classList.remove("no-anim");
+    }
+  }
+
+  function setActiveNav(targetId, skipAnim) {
+    if (targetId === currentNavTarget) return;
+    currentNavTarget = targetId;
+    els.navItems.forEach((btn) => {
+      btn.classList.toggle("active", btn.dataset.target === targetId);
+    });
+    moveNavIndicator(skipAnim);
+  }
+
+  /**
+   * Переключает видимую страницу. focusEl (необязательно) — элемент внутри
+   * уже показанной страницы, к которому нужно проскроллить (используется
+   * кнопками-шорткатами "Пополнить"/"Промокод"/"Управлять" с главной).
+   */
+  function switchPage(targetId, focusEl, skipAnim) {
+    if (!PAGE_IDS.includes(targetId)) targetId = "top";
+
+    PAGE_IDS.forEach((id) => {
+      if (pageEls[id]) pageEls[id].classList.toggle("hidden", id !== targetId);
+    });
+    setActiveNav(targetId, skipAnim);
+
+    if (focusEl) {
+      requestAnimationFrame(() => focusEl.scrollIntoView({ behavior: "smooth", block: "start" }));
+    } else {
+      window.scrollTo({ top: 0, behavior: skipAnim ? "auto" : "smooth" });
+    }
+  }
+
+  els.navItems.forEach((btn) => {
+    btn.onclick = () => switchPage(btn.dataset.target);
+  });
+
+  window.addEventListener("resize", () => moveNavIndicator(true));
+
+  els.manageBtn.onclick = () => switchPage("plans-title", els.plansTitle);
+  els.topupShortcut.onclick = () => switchPage("plans-title", els.topupPresets);
+  els.promoShortcut.onclick = () => switchPage("plans-title", els.promoTitle);
+
+  function initialPageFromHash() {
+    const hash = (window.location.hash || "").replace("#", "");
+    return PAGE_IDS.includes(hash) ? hash : "top";
+  }
 
   async function init() {
     if (!API_BASE_URL || API_BASE_URL.indexOf("example.com") !== -1) {
       els.loading.textContent = "Не настроен адрес API — отредактируйте config.js перед деплоем.";
       return;
     }
-    if (!initData) {
-      els.loading.textContent = "Открой мини-приложение через кнопку в Telegram-боте.";
+
+    const authOk = await ensureBrowserAuth();
+    if (!authOk) {
+      // если был login_token и обмен не удался, ensureBrowserAuth уже показал
+      // текст ошибки — не затираем его общим экраном входа
+      if (!incomingLoginToken) showBrowserLoginScreen();
       return;
     }
+
     try {
       const [profile, plansData, devices] = await Promise.all([
         api("/api/me"),
@@ -395,6 +712,25 @@
 
       els.loading.classList.add("hidden");
       els.main.classList.remove("hidden");
+      els.bottomNav.classList.remove("hidden");
+
+      // сразу показываем нужную страницу без анимации (переход из #loading,
+      // индикатор ещё не имеет размеров до первого кадра — тот же приём,
+      // что раньше использовался для moveNavIndicator(true))
+      switchPage(initialPageFromHash(), null, true);
+      requestAnimationFrame(() => moveNavIndicator(true));
+
+      // кнопка "Выйти" нужна только для сессии обычного браузера — внутри
+      // Telegram Mini App выходить не из чего, initData живёт сама по себе
+      if (!initData && sessionToken) {
+        els.browserLogoutBtn.classList.remove("hidden");
+      }
+
+      if (autoPromoCode) {
+        redeemPromoFromStartParam(autoPromoCode);
+      } else {
+        showPromoPopupIfAny();
+      }
     } catch (e) {
       els.loading.textContent = "Ошибка загрузки: " + e.message;
     }
