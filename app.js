@@ -387,7 +387,7 @@
     free: "🎁 Бесплатно (по скидке)",
     balance: "💰 С баланса",
     cryptobot: "💎 Крипта (CryptoBot)",
-    lava: "💳 Карта / СБП (LAVA)",
+    platega: "💳 СБП (Platega)",
   };
 
   function planPayButtons(plan) {
@@ -402,7 +402,7 @@
     wrap.className = "pay-methods";
 
     const priceText = (provider) =>
-      provider === "balance" || provider === "lava" ? priceRub + " ₽" : priceUsdt + " USDT";
+      provider === "balance" || provider === "platega" ? priceRub + " ₽" : priceUsdt + " USDT";
 
     if (isFree) {
       wrap.appendChild(
@@ -420,7 +420,7 @@
       makeBtn("💎 Крипта", () => openPayConfirm(plan, "cryptobot", priceText("cryptobot")), "secondary")
     );
     wrap.appendChild(
-      makeBtn("💳 LAVA", () => openPayConfirm(plan, "lava", priceText("lava")), "secondary")
+      makeBtn("💳 СБП", () => openPayConfirm(plan, "platega", priceText("platega")), "secondary")
     );
     return wrap;
   }
