@@ -470,17 +470,21 @@
   }
 
   function planModalTotals() {
-    const { plan, selectedQty } = planModalState;
+    const { plan, selectedQty, baseLimit } = planModalState;
     const discount = cachedProfile ? cachedProfile.discount_percent : 0;
     const factor = discount > 0 ? Math.max(0, 1 - discount / 100) : 1;
     const planPriceRub = Math.round(plan.price_rub * factor);
     const planPriceUsdt = Math.round(plan.price_usdt * factor * 100) / 100;
-    const devicePriceRub = cachedDevices ? Math.round(cachedDevices.price_rub * selectedQty) : 0;
-    const devicePriceUsdt = cachedDevices ? Math.round(cachedDevices.price_usdt * selectedQty * 100) / 100 : 0;
+    // n — выбранное на оси общее количество устройств, докупается (n - baseLimit) штук.
+    // Цена доп. устройств считается по формуле (n - baseLimit) * price_за_устройство.
+    const extraQty = Math.max(0, selectedQty - (baseLimit || 0));
+    const devicePriceRub = cachedDevices ? Math.round(cachedDevices.price_rub * extraQty) : 0;
+    const devicePriceUsdt = cachedDevices ? Math.round(cachedDevices.price_usdt * extraQty * 100) / 100 : 0;
     return {
       discount: discount,
       priceRub: planPriceRub + devicePriceRub,
       priceUsdt: Math.round((planPriceUsdt + devicePriceUsdt) * 100) / 100,
+      extraQty: extraQty,
     };
   }
 
@@ -525,7 +529,9 @@
     }
 
     els.planModalDevicesQty.textContent =
-      selectedQty === 0 ? "без доп. устройств" : "+" + selectedQty + " " + deviceWordLocal(selectedQty);
+      totals.extraQty === 0
+        ? "без доп. устройств"
+        : "+" + totals.extraQty + " " + deviceWordLocal(totals.extraQty);
 
     renderDeviceTrack(els.planModalDots, deviceValues, selectedQty, (val) => {
       planModalState.selectedQty = val;
@@ -534,7 +540,7 @@
   }
 
   function renderPlanModalMethods() {
-    const { plan, selectedQty } = planModalState;
+    const { plan } = planModalState;
     const totals = planModalTotals();
     const isFree = totals.priceRub <= 0;
     const balanceEnough = cachedProfile && cachedProfile.balance >= totals.priceRub && !isFree;
@@ -544,7 +550,7 @@
 
     const goConfirm = (provider) => {
       closePlanModal();
-      openPayConfirm(plan, provider, priceText(provider), selectedQty);
+      openPayConfirm(plan, provider, priceText(provider), totals.extraQty);
     };
 
     els.planModalMethods.innerHTML = "";
@@ -560,8 +566,11 @@
   }
 
   function openPlanModal(plan) {
-    const deviceValues = [0].concat(cachedDevices ? cachedDevices.qty_presets : []);
-    planModalState = { plan: plan, deviceValues: deviceValues, selectedQty: 0 };
+    // Базовый лимит устройств (уже включён в тариф, докупка не нужна) — приходит с бэкенда,
+    // по умолчанию 3. Ось показывает общее количество устройств (n), а не докупаемое сверху.
+    const baseLimit = cachedDevices && cachedDevices.base_device_limit != null ? cachedDevices.base_device_limit : 3;
+    const deviceValues = [baseLimit].concat(cachedDevices ? cachedDevices.qty_presets : []);
+    planModalState = { plan: plan, deviceValues: deviceValues, selectedQty: baseLimit, baseLimit: baseLimit };
     els.planModalSelectView.classList.remove("hidden");
     els.planModalMethodView.classList.add("hidden");
     renderPlanModalSelectView();
