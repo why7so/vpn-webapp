@@ -342,6 +342,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  cursor: pointer;
 }
 
 .plan-title {
@@ -574,6 +575,85 @@ input:focus {
   display: flex;
   gap: 8px;
   margin-top: 16px;
+}
+
+/* ---------- ось выбора количества доп. устройств (модалка тарифа) ---------- */
+
+.device-selector {
+  padding: 10px 0 4px;
+}
+
+.device-selector-label {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: 22px;
+}
+
+.device-selector-label span:last-child {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.device-track {
+  position: relative;
+  height: 24px;
+  margin: 0 12px;
+}
+
+.device-track-line {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--track);
+  border-radius: 2px;
+  transform: translateY(-50%);
+}
+
+.device-track-fill {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 2px;
+  transform: translateY(-50%);
+  transition: width 0.18s ease;
+}
+
+.device-dot {
+  position: absolute;
+  top: 50%;
+  width: 24px;
+  height: 24px;
+  margin-left: -12px;
+  margin-top: -12px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 2px solid var(--track);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, transform 0.15s ease;
+}
+
+.device-dot:active {
+  transform: scale(0.94);
+}
+
+.device-dot.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  transform: scale(1.1);
 }
 
 /* ---------- bottom nav ---------- */

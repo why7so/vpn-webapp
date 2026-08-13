@@ -145,6 +145,38 @@
 
     <div id="toast" class="toast hidden"></div>
 
+    <!-- Модалка выбора тарифа: план — ось выбора доп. устройств — способ оплаты -->
+    <div id="plan-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-title" id="plan-modal-title">—</div>
+        <div class="modal-row">
+          <span class="modal-row-label">Цена</span>
+          <span class="modal-row-value" id="plan-modal-price">—</span>
+        </div>
+
+        <div id="plan-modal-select-view">
+          <div class="device-selector">
+            <div class="device-selector-label">
+              <span>Доп. устройства</span>
+              <span id="plan-modal-devices-qty">без доп. устройств</span>
+            </div>
+            <div class="device-track" id="plan-modal-dots"></div>
+          </div>
+          <div class="modal-actions">
+            <button class="btn secondary" id="plan-modal-cancel">Отмена</button>
+            <button class="btn" id="plan-modal-pay">Оплатить</button>
+          </div>
+        </div>
+
+        <div id="plan-modal-method-view" class="hidden">
+          <div class="pay-methods" id="plan-modal-methods"></div>
+          <div class="modal-actions">
+            <button class="btn secondary" id="plan-modal-back">Назад</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Экран подтверждения перед оплатой: товар — цена — кнопка «Оплатить» -->
     <div id="pay-modal" class="modal-overlay hidden">
       <div class="modal-card">

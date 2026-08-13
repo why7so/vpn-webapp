@@ -170,6 +170,18 @@
     plansTitle: document.getElementById("plans-title"),
     plansList: document.getElementById("plans-list"),
 
+    planModal: document.getElementById("plan-modal"),
+    planModalTitle: document.getElementById("plan-modal-title"),
+    planModalPrice: document.getElementById("plan-modal-price"),
+    planModalDevicesQty: document.getElementById("plan-modal-devices-qty"),
+    planModalDots: document.getElementById("plan-modal-dots"),
+    planModalSelectView: document.getElementById("plan-modal-select-view"),
+    planModalCancel: document.getElementById("plan-modal-cancel"),
+    planModalPay: document.getElementById("plan-modal-pay"),
+    planModalMethodView: document.getElementById("plan-modal-method-view"),
+    planModalMethods: document.getElementById("plan-modal-methods"),
+    planModalBack: document.getElementById("plan-modal-back"),
+
     topupPresets: document.getElementById("topup-presets"),
     topupCustom: document.getElementById("topup-custom"),
     topupBtn: document.getElementById("topup-btn"),
@@ -393,48 +405,14 @@
     platega: "💳 СБП (Platega)",
   };
 
-  function planPayButtons(plan) {
-    const discount = cachedProfile ? cachedProfile.discount_percent : 0;
-    const factor = discount > 0 ? Math.max(0, 1 - discount / 100) : 1;
-    const priceRub = Math.round(plan.price_rub * factor);
-    const priceUsdt = Math.round(plan.price_usdt * factor * 100) / 100;
-    const isFree = priceRub <= 0;
-    const balanceEnough = cachedProfile && cachedProfile.balance >= priceRub && !isFree;
-
-    const wrap = document.createElement("div");
-    wrap.className = "pay-methods";
-
-    const priceText = (provider) =>
-      provider === "balance" || provider === "platega" ? priceRub + " ₽" : priceUsdt + " USDT";
-
-    if (isFree) {
-      wrap.appendChild(
-        makeBtn("🎁 Бесплатно", () => openPayConfirm(plan, "free", "Бесплатно"))
-      );
-      return wrap;
-    }
-
-    if (balanceEnough) {
-      wrap.appendChild(
-        makeBtn("💰 С баланса", () => openPayConfirm(plan, "balance", priceText("balance")))
-      );
-    }
-    wrap.appendChild(
-      makeBtn("💎 Крипта", () => openPayConfirm(plan, "cryptobot", priceText("cryptobot")), "secondary")
-    );
-    wrap.appendChild(
-      makeBtn("💳 СБП", () => openPayConfirm(plan, "platega", priceText("platega")), "secondary")
-    );
-    return wrap;
-  }
-
   // ---------- экран подтверждения перед оплатой: товар — цена — кнопка «Оплатить» ----------
-  let pendingPurchase = null; // { type: "plan", planCode, provider } | { type: "devices", qty, provider }
+  let pendingPurchase = null; // { type: "plan", planCode, provider, extraQty } | { type: "devices", qty, provider }
 
-  function openPayConfirm(plan, provider, priceText) {
-    pendingPurchase = { type: "plan", planCode: plan.code, provider: provider };
+  function openPayConfirm(plan, provider, priceText, extraQty) {
+    extraQty = extraQty || 0;
+    pendingPurchase = { type: "plan", planCode: plan.code, provider: provider, extraQty: extraQty };
     els.payModalPlanLabel.textContent = "Тариф";
-    els.payModalPlan.textContent = plan.title;
+    els.payModalPlan.textContent = plan.title + (extraQty ? " + " + extraQty + " устр." : "");
     els.payModalMethod.textContent = PAY_METHOD_LABELS[provider] || provider;
     els.payModalPrice.textContent = priceText;
     els.payModalConfirm.textContent = provider === "free" ? "Активировать" : "Оплатить";
@@ -467,7 +445,7 @@
     if (pending.type === "devices") {
       purchaseDevices(pending.qty, pending.provider);
     } else {
-      purchase(pending.planCode, pending.provider);
+      purchase(pending.planCode, pending.provider, pending.extraQty || 0);
     }
   };
 
@@ -479,6 +457,139 @@
     return btn;
   }
 
+  // ---------- модалка выбора тарифа: план -> ось доп. устройств -> способ оплаты ----------
+
+  let planModalState = null; // { plan, deviceValues, selectedQty }
+
+  function deviceWordLocal(qty) {
+    const mod10 = qty % 10;
+    const mod100 = qty % 100;
+    if (mod10 === 1 && mod100 !== 11) return "устройство";
+    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return "устройства";
+    return "устройств";
+  }
+
+  function planModalTotals() {
+    const { plan, selectedQty } = planModalState;
+    const discount = cachedProfile ? cachedProfile.discount_percent : 0;
+    const factor = discount > 0 ? Math.max(0, 1 - discount / 100) : 1;
+    const planPriceRub = Math.round(plan.price_rub * factor);
+    const planPriceUsdt = Math.round(plan.price_usdt * factor * 100) / 100;
+    const devicePriceRub = cachedDevices ? Math.round(cachedDevices.price_rub * selectedQty) : 0;
+    const devicePriceUsdt = cachedDevices ? Math.round(cachedDevices.price_usdt * selectedQty * 100) / 100 : 0;
+    return {
+      discount: discount,
+      priceRub: planPriceRub + devicePriceRub,
+      priceUsdt: Math.round((planPriceUsdt + devicePriceUsdt) * 100) / 100,
+    };
+  }
+
+  // Рисует ось: линия + точки-остановки на значениях values, активная точка — selected.
+  // onChange(value) вызывается при клике по точке.
+  function renderDeviceTrack(container, values, selected, onChange) {
+    container.innerHTML = "";
+    const line = document.createElement("div");
+    line.className = "device-track-line";
+    container.appendChild(line);
+
+    const lastIndex = values.length - 1;
+    const selectedIndex = Math.max(0, values.indexOf(selected));
+
+    const fill = document.createElement("div");
+    fill.className = "device-track-fill";
+    fill.style.width = (lastIndex > 0 ? (selectedIndex / lastIndex) * 100 : 0) + "%";
+    container.appendChild(fill);
+
+    values.forEach((val, i) => {
+      const pct = lastIndex > 0 ? (i / lastIndex) * 100 : 0;
+      const dot = document.createElement("div");
+      dot.className = "device-dot" + (val === selected ? " active" : "");
+      dot.style.left = pct + "%";
+      dot.textContent = String(val);
+      dot.onclick = () => onChange(val);
+      container.appendChild(dot);
+    });
+  }
+
+  function renderPlanModalSelectView() {
+    const { plan, deviceValues, selectedQty } = planModalState;
+    els.planModalTitle.textContent = plan.title;
+
+    const totals = planModalTotals();
+    if (totals.discount > 0) {
+      els.planModalPrice.innerHTML =
+        '<span class="old">' + plan.price_usdt + "$ / " + plan.price_rub + "₽</span> " +
+        totals.priceUsdt + "$ / " + totals.priceRub + "₽";
+    } else {
+      els.planModalPrice.textContent = totals.priceUsdt + "$ / " + totals.priceRub + "₽";
+    }
+
+    els.planModalDevicesQty.textContent =
+      selectedQty === 0 ? "без доп. устройств" : "+" + selectedQty + " " + deviceWordLocal(selectedQty);
+
+    renderDeviceTrack(els.planModalDots, deviceValues, selectedQty, (val) => {
+      planModalState.selectedQty = val;
+      renderPlanModalSelectView();
+    });
+  }
+
+  function renderPlanModalMethods() {
+    const { plan, selectedQty } = planModalState;
+    const totals = planModalTotals();
+    const isFree = totals.priceRub <= 0;
+    const balanceEnough = cachedProfile && cachedProfile.balance >= totals.priceRub && !isFree;
+
+    const priceText = (provider) =>
+      provider === "balance" || provider === "platega" ? totals.priceRub + " ₽" : totals.priceUsdt + " USDT";
+
+    const goConfirm = (provider) => {
+      closePlanModal();
+      openPayConfirm(plan, provider, priceText(provider), selectedQty);
+    };
+
+    els.planModalMethods.innerHTML = "";
+    if (isFree) {
+      els.planModalMethods.appendChild(makeBtn("🎁 Бесплатно", () => goConfirm("free")));
+    } else {
+      if (balanceEnough) {
+        els.planModalMethods.appendChild(makeBtn("💰 С баланса", () => goConfirm("balance")));
+      }
+      els.planModalMethods.appendChild(makeBtn("💎 Крипта", () => goConfirm("cryptobot"), "secondary"));
+      els.planModalMethods.appendChild(makeBtn("💳 СБП", () => goConfirm("platega"), "secondary"));
+    }
+  }
+
+  function openPlanModal(plan) {
+    const deviceValues = [0].concat(cachedDevices ? cachedDevices.qty_presets : []);
+    planModalState = { plan: plan, deviceValues: deviceValues, selectedQty: 0 };
+    els.planModalSelectView.classList.remove("hidden");
+    els.planModalMethodView.classList.add("hidden");
+    renderPlanModalSelectView();
+    els.planModal.classList.remove("hidden");
+  }
+
+  function closePlanModal() {
+    planModalState = null;
+    els.planModal.classList.add("hidden");
+  }
+
+  els.planModalCancel.onclick = closePlanModal;
+  els.planModal.onclick = (e) => {
+    if (e.target === els.planModal) closePlanModal();
+  };
+  els.planModalPay.onclick = () => {
+    if (!planModalState) return;
+    els.planModalSelectView.classList.add("hidden");
+    els.planModalMethodView.classList.remove("hidden");
+    renderPlanModalMethods();
+  };
+  els.planModalBack.onclick = () => {
+    if (!planModalState) return;
+    els.planModalMethodView.classList.add("hidden");
+    els.planModalSelectView.classList.remove("hidden");
+    renderPlanModalSelectView();
+  };
+
   function renderPlans(plans) {
     cachedPlans = plans;
     els.plansList.innerHTML = "";
@@ -487,6 +598,7 @@
     plans.forEach((plan) => {
       const card = document.createElement("div");
       card.className = "plan-card";
+      card.onclick = () => openPlanModal(plan);
 
       const title = document.createElement("div");
       title.className = "plan-title";
@@ -504,7 +616,6 @@
         price.textContent = plan.price_usdt + "$ / " + plan.price_rub + "₽";
       }
       card.appendChild(price);
-      card.appendChild(planPayButtons(plan));
       els.plansList.appendChild(card);
     });
   }
@@ -534,22 +645,26 @@
     showToast("Оплата пока не найдена. Если уже оплатили — подождите ещё немного и откройте кабинет заново.", true);
   }
 
-  async function purchase(planCode, provider) {
+  async function purchase(planCode, provider, extraQty) {
+    extraQty = extraQty || 0;
+    const devicesNote = extraQty ? " Устройства добавлены: +" + extraQty + "." : "";
     try {
       const result = await api("/api/purchase", {
         method: "POST",
-        body: JSON.stringify({ plan_code: planCode, provider: provider }),
+        body: JSON.stringify({ plan_code: planCode, provider: provider, extra_devices_qty: extraQty }),
       });
       if (result.status === "granted") {
-        showToast("✅ Доступ выдан!");
+        showToast("✅ Доступ выдан!" + devicesNote);
         await refreshProfile();
+        if (extraQty) await refreshDevices();
         return;
       }
       // status === "invoice"
       if (tg) tg.openLink(result.pay_url);
       pollInvoice(result.invoice_id, async () => {
-        showToast("✅ Оплата подтверждена, доступ выдан!");
+        showToast("✅ Оплата подтверждена, доступ выдан!" + devicesNote);
         await refreshProfile();
+        if (extraQty) await refreshDevices();
       });
     } catch (e) {
       showToast(e.message, true);
