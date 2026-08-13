@@ -179,8 +179,10 @@
     promoBtn: document.getElementById("promo-btn"),
 
     devicesText: document.getElementById("devices-text"),
+    devicesPresets: document.getElementById("devices-presets"),
 
     payModal: document.getElementById("pay-modal"),
+    payModalPlanLabel: document.getElementById("pay-modal-plan-label"),
     payModalPlan: document.getElementById("pay-modal-plan"),
     payModalMethod: document.getElementById("pay-modal-method"),
     payModalPrice: document.getElementById("pay-modal-price"),
@@ -289,6 +291,7 @@
 
   let cachedPlans = [];
   let cachedProfile = null;
+  let cachedDevices = null;
 
   function renderProfile(profile) {
     cachedProfile = profile;
@@ -426,14 +429,25 @@
   }
 
   // ---------- экран подтверждения перед оплатой: товар — цена — кнопка «Оплатить» ----------
-  let pendingPurchase = null; // { planCode, provider }
+  let pendingPurchase = null; // { type: "plan", planCode, provider } | { type: "devices", qty, provider }
 
   function openPayConfirm(plan, provider, priceText) {
-    pendingPurchase = { planCode: plan.code, provider: provider };
+    pendingPurchase = { type: "plan", planCode: plan.code, provider: provider };
+    els.payModalPlanLabel.textContent = "Тариф";
     els.payModalPlan.textContent = plan.title;
     els.payModalMethod.textContent = PAY_METHOD_LABELS[provider] || provider;
     els.payModalPrice.textContent = priceText;
     els.payModalConfirm.textContent = provider === "free" ? "Активировать" : "Оплатить";
+    els.payModal.classList.remove("hidden");
+  }
+
+  function openDeviceConfirm(qty, provider, priceText) {
+    pendingPurchase = { type: "devices", qty: qty, provider: provider };
+    els.payModalPlanLabel.textContent = "Устройства";
+    els.payModalPlan.textContent = "+" + qty;
+    els.payModalMethod.textContent = PAY_METHOD_LABELS[provider] || provider;
+    els.payModalPrice.textContent = priceText;
+    els.payModalConfirm.textContent = "Оплатить";
     els.payModal.classList.remove("hidden");
   }
 
@@ -448,9 +462,13 @@
   };
   els.payModalConfirm.onclick = () => {
     if (!pendingPurchase) return;
-    const { planCode, provider } = pendingPurchase;
+    const pending = pendingPurchase;
     closePayConfirm();
-    purchase(planCode, provider);
+    if (pending.type === "devices") {
+      purchaseDevices(pending.qty, pending.provider);
+    } else {
+      purchase(pending.planCode, pending.provider);
+    }
   };
 
   function makeBtn(text, onClick, cls) {
@@ -495,6 +513,7 @@
     const profile = await api("/api/me");
     renderProfile(profile);
     if (cachedPlans.length) renderPlans(cachedPlans); // пересчитать цены со скидкой
+    if (cachedDevices) renderDeviceButtons(cachedDevices); // пересчитать доступность оплаты с баланса
   }
 
   async function pollInvoice(invoiceId, onPaid) {
@@ -531,6 +550,93 @@
       pollInvoice(result.invoice_id, async () => {
         showToast("✅ Оплата подтверждена, доступ выдан!");
         await refreshProfile();
+      });
+    } catch (e) {
+      showToast(e.message, true);
+    }
+  }
+
+  // ---------- доп. услуга: докупить устройства ----------
+
+  async function refreshDevices() {
+    const devices = await api("/api/devices");
+    renderDevices(devices);
+  }
+
+  function deviceWord(qty) {
+    const mod10 = qty % 10;
+    const mod100 = qty % 100;
+    if (mod10 === 1 && mod100 !== 11) return "устройство";
+    if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return "устройства";
+    return "устройств";
+  }
+
+  function deviceQtyButtons(qty, priceRub, priceUsdt) {
+    const balanceEnough = cachedProfile && cachedProfile.balance >= priceRub;
+
+    const wrap = document.createElement("div");
+    wrap.className = "pay-methods";
+
+    if (balanceEnough) {
+      wrap.appendChild(
+        makeBtn("💰 С баланса", () => openDeviceConfirm(qty, "balance", priceRub + " ₽"))
+      );
+    }
+    wrap.appendChild(
+      makeBtn("💎 Крипта", () => openDeviceConfirm(qty, "cryptobot", priceUsdt + " USDT"), "secondary")
+    );
+    wrap.appendChild(
+      makeBtn("💳 СБП", () => openDeviceConfirm(qty, "platega", priceRub + " ₽"), "secondary")
+    );
+    return wrap;
+  }
+
+  function renderDeviceButtons(devices) {
+    els.devicesPresets.innerHTML = "";
+    (devices.qty_presets || []).forEach((qty) => {
+      const priceRub = Math.round(devices.price_rub * qty);
+      const priceUsdt = Math.round(devices.price_usdt * qty * 100) / 100;
+
+      const card = document.createElement("div");
+      card.className = "plan-card";
+
+      const title = document.createElement("div");
+      title.className = "plan-title";
+      title.textContent = "+" + qty + " " + deviceWord(qty);
+      card.appendChild(title);
+
+      const price = document.createElement("div");
+      price.className = "plan-price";
+      price.textContent = priceUsdt + "$ / " + priceRub + "₽";
+      card.appendChild(price);
+
+      card.appendChild(deviceQtyButtons(qty, priceRub, priceUsdt));
+      els.devicesPresets.appendChild(card);
+    });
+  }
+
+  function renderDevices(devices) {
+    cachedDevices = devices;
+    els.devicesText.textContent = devices.message;
+    renderDeviceButtons(devices);
+  }
+
+  async function purchaseDevices(qty, provider) {
+    try {
+      const result = await api("/api/devices/purchase", {
+        method: "POST",
+        body: JSON.stringify({ qty: qty, provider: provider }),
+      });
+      if (result.status === "granted") {
+        showToast("✅ Устройства добавлены! Лимит: " + result.device_limit);
+        await refreshDevices();
+        return;
+      }
+      // status === "invoice"
+      if (tg) tg.openLink(result.pay_url);
+      pollInvoice(result.invoice_id, async (r) => {
+        showToast("✅ Оплата подтверждена! Лимит устройств: " + r.device_limit);
+        await refreshDevices();
       });
     } catch (e) {
       showToast(e.message, true);
@@ -708,7 +814,7 @@
       renderProfile(profile);
       renderPlans(plansData.plans);
       renderTopupPresets(plansData.topup_presets_rub);
-      els.devicesText.textContent = devices.message;
+      renderDevices(devices);
 
       els.loading.classList.add("hidden");
       els.main.classList.remove("hidden");
