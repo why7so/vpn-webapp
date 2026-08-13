@@ -472,6 +472,29 @@ input:focus {
   font-weight: 600;
 }
 
+/* ---------- legal links (account page) ---------- */
+
+.legal-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.legal-link {
+  display: block;
+  padding: 10px 0;
+  font-size: 14px;
+  color: var(--text);
+  text-decoration: none;
+}
+
+.legal-link:active {
+  color: var(--accent);
+}
+
+.legal-link + .legal-link {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+}
+
 /* ---------- account page ---------- */
 
 .account-row {
