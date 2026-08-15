@@ -422,7 +422,21 @@
       if (!subUrl) return;
       const deepLink = app.scheme + "://add/" + encodeURIComponent(subUrl);
       if (tg) {
-        tg.openLink(deepLink);
+        // Telegram Mini App WebView не умеет открывать кастомные URI-схемы
+        // (incy://, happ://) — ни через tg.openLink(), ни через обычный
+        // window.location внутри себя (известное ограничение Telegram, см.
+        // https://github.com/tdlib/telegram-bot-api/issues/299). Поэтому
+        // открываем HTTPS-страницу connect.html — Telegram выпускает её во
+        // внешний системный браузер, а тот уже без проблем понимает
+        // кастомные схемы и передаёт их установленному приложению.
+        const redirectUrl =
+          window.location.origin +
+          window.location.pathname.replace(/[^/]*$/, "") +
+          "connect.html?scheme=" +
+          encodeURIComponent(app.scheme) +
+          "&url=" +
+          encodeURIComponent(subUrl);
+        tg.openLink(redirectUrl);
       } else {
         window.location.href = deepLink;
       }
