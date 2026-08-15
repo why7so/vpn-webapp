@@ -198,7 +198,9 @@
     promoBtn: document.getElementById("promo-btn"),
 
     devicesText: document.getElementById("devices-text"),
-    devicesPresets: document.getElementById("devices-presets"),
+    devicesQtyLabel: document.getElementById("devices-qty-label"),
+    devicesTrack: document.getElementById("devices-track"),
+    devicesPayMethods: document.getElementById("devices-pay-methods"),
 
     payModal: document.getElementById("pay-modal"),
     payModalPlanLabel: document.getElementById("pay-modal-plan-label"),
@@ -468,6 +470,7 @@
   let cachedPlans = [];
   let cachedProfile = null;
   let cachedDevices = null;
+  let selectedDeviceQty = 0; // выбранное на оси "Докупить устройства" количество (0 = без доп. устройств)
 
   function renderProfile(profile) {
     cachedProfile = profile;
@@ -880,28 +883,33 @@
     return wrap;
   }
 
+  // Ось "Докупить устройства": та же точечная шкала, что и в модалке тарифа
+  // (renderDeviceTrack). Первая точка — 0 (без доп. устройств), дальше —
+  // qty_presets с бэкенда. Способы оплаты показываются под шкалой и
+  // пересчитываются на выбранное количество; при 0 блок оплаты скрыт.
   function renderDeviceButtons(devices) {
-    els.devicesPresets.innerHTML = "";
-    (devices.qty_presets || []).forEach((qty) => {
-      const priceRub = Math.round(devices.price_rub * qty);
-      const priceUsdt = Math.round(devices.price_usdt * qty * 100) / 100;
+    const values = [0].concat(devices.qty_presets || []);
+    if (values.indexOf(selectedDeviceQty) === -1) selectedDeviceQty = 0;
 
-      const card = document.createElement("div");
-      card.className = "plan-card";
-
-      const title = document.createElement("div");
-      title.className = "plan-title";
-      title.textContent = "+" + qty + " " + deviceWord(qty);
-      card.appendChild(title);
-
-      const price = document.createElement("div");
-      price.className = "plan-price";
-      price.textContent = priceUsdt + "$ / " + priceRub + "₽";
-      card.appendChild(price);
-
-      card.appendChild(deviceQtyButtons(qty, priceRub, priceUsdt));
-      els.devicesPresets.appendChild(card);
+    renderDeviceTrack(els.devicesTrack, values, selectedDeviceQty, (val) => {
+      selectedDeviceQty = val;
+      renderDeviceButtons(cachedDevices);
     });
+
+    els.devicesQtyLabel.textContent =
+      selectedDeviceQty === 0 ? "без доп. устройств" : "+" + selectedDeviceQty + " " + deviceWord(selectedDeviceQty);
+
+    if (selectedDeviceQty === 0) {
+      els.devicesPayMethods.classList.add("hidden");
+      els.devicesPayMethods.innerHTML = "";
+      return;
+    }
+
+    const priceRub = Math.round(devices.price_rub * selectedDeviceQty);
+    const priceUsdt = Math.round(devices.price_usdt * selectedDeviceQty * 100) / 100;
+    els.devicesPayMethods.innerHTML = "";
+    els.devicesPayMethods.appendChild(deviceQtyButtons(selectedDeviceQty, priceRub, priceUsdt));
+    els.devicesPayMethods.classList.remove("hidden");
   }
 
   function renderDevices(devices) {
