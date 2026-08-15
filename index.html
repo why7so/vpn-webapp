@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=2" />
+  <link rel="stylesheet" href="style.css?v=3" />
 </head>
 <body>
   <div id="app">
@@ -78,6 +78,38 @@
         <div class="card hidden" id="connect-no-sub">
           У вас пока нет активной подписки — сначала оформите её в разделе «Тарифы».
         </div>
+
+        <div class="card connect-app-select hidden" id="connect-app-select"></div>
+
+        <div class="card connect-steps" id="connect-steps-block">
+          <div class="connect-step">
+            <div class="connect-step-icon">1</div>
+            <div class="connect-step-body">
+              <div class="connect-step-title">Установка приложения</div>
+              <div class="connect-step-desc" id="connect-step-app-name">—</div>
+              <a class="btn btn-standalone connect-step-btn" id="connect-store-btn" target="_blank" rel="noopener">Открыть в App Store</a>
+            </div>
+          </div>
+          <div class="connect-step">
+            <div class="connect-step-icon">2</div>
+            <div class="connect-step-body">
+              <div class="connect-step-title">Добавление подписки</div>
+              <div class="connect-step-desc">Нажмите кнопку ниже — приложение откроется, и подписка добавится автоматически.</div>
+              <button class="btn btn-standalone connect-step-btn" id="connect-add-sub-btn" disabled>+ Добавить подписку</button>
+            </div>
+          </div>
+          <div class="connect-step">
+            <div class="connect-step-icon">3</div>
+            <div class="connect-step-body">
+              <div class="connect-step-title">Подключение и использование</div>
+              <div class="connect-step-desc">В главном разделе приложения нажмите кнопку включения VPN и выберите сервер из списка.</div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn secondary btn-standalone" id="connect-other-device-btn">Другое устройство?</button>
+        <div class="chip-row hidden" id="connect-platform-chips"></div>
+
         <div id="sub-url-block" class="card hidden">
           <div class="card-title">Ссылка-подписка</div>
           <div class="sub-url" id="sub-url"></div>
@@ -85,13 +117,6 @@
             <button class="btn secondary" id="copy-sub-url">Скопировать</button>
             <button class="btn" id="share-sub-url">🐸 Поделиться</button>
           </div>
-        </div>
-        <div class="card connect-steps" id="connect-steps-block">
-          <ol class="connect-steps-list">
-            <li>Установите клиент: V2rayNG (Android), Streisand / Shadowrocket (iOS), Hiddify (Windows/macOS/Linux/Android/iOS)</li>
-            <li>В клиенте выберите «Добавить по ссылке-подписке» и вставьте ссылку выше</li>
-            <li>Обновите список серверов и подключайтесь</li>
-          </ol>
         </div>
 
         <div class="section-title">Устройства</div>
@@ -235,7 +260,7 @@
     </nav>
   </div>
 
-  <script src="config.js?v=2"></script>
-  <script src="app.js?v=3"></script>
+  <script src="config.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

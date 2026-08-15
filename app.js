@@ -167,6 +167,13 @@
     shareSubUrl: document.getElementById("share-sub-url"),
     connectNoSub: document.getElementById("connect-no-sub"),
 
+    connectAppSelect: document.getElementById("connect-app-select"),
+    connectStepAppName: document.getElementById("connect-step-app-name"),
+    connectStoreBtn: document.getElementById("connect-store-btn"),
+    connectAddSubBtn: document.getElementById("connect-add-sub-btn"),
+    connectOtherDeviceBtn: document.getElementById("connect-other-device-btn"),
+    connectPlatformChips: document.getElementById("connect-platform-chips"),
+
     plansTitle: document.getElementById("plans-title"),
     plansList: document.getElementById("plans-list"),
 
@@ -299,6 +306,149 @@
     }
   }
 
+  // ---------- подключение устройства: автоопределение ОС + рекомендуемые приложения ----------
+
+  const PLATFORM_LABELS = { ios: "iOS", android: "Android", windows: "Windows" };
+
+  const PLATFORM_APPS = {
+    ios: ["incy", "happ"],
+    android: ["happ"],
+    windows: ["happ"],
+    macos: ["happ"],
+    linux: ["happ"],
+    other: ["happ"],
+  };
+
+  const APP_INFO = {
+    incy: {
+      name: "INCY",
+      scheme: "incy",
+      recommended: true,
+      storeUrls: { ios: "https://apps.apple.com/us/app/incy/id6756943388" },
+      storeLabels: { ios: "App Store" },
+    },
+    happ: {
+      name: "Happ",
+      scheme: "happ",
+      recommended: false,
+      storeUrls: {
+        ios: "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215",
+        android: "https://play.google.com/store/apps/details?id=com.happproxy",
+        windows: "https://www.happ.su/main",
+        macos: "https://www.happ.su/main",
+        linux: "https://www.happ.su/main",
+        other: "https://www.happ.su/main",
+      },
+      storeLabels: { ios: "App Store", android: "Google Play" },
+    },
+  };
+
+  let connectPlatform = null;
+  const connectSelectedApp = {};
+
+  function detectPlatform() {
+    const tgPlatform = tg && tg.platform;
+    const ua = navigator.userAgent || "";
+    if (tgPlatform === "ios" || /iPhone|iPad|iPod/.test(ua)) return "ios";
+    if (tgPlatform === "android" || tgPlatform === "android_x" || /Android/.test(ua)) return "android";
+    if (/Windows/.test(ua)) return "windows";
+    if (/Macintosh|Mac OS X/.test(ua)) return "macos";
+    if (/Linux/.test(ua)) return "linux";
+    return "other";
+  }
+
+  function currentSubUrl() {
+    return cachedProfile && cachedProfile.subscription && cachedProfile.subscription.subscription_url
+      ? cachedProfile.subscription.subscription_url
+      : null;
+  }
+
+  function renderConnectDevice() {
+    if (!connectPlatform) connectPlatform = detectPlatform();
+    const appIds = PLATFORM_APPS[connectPlatform] || PLATFORM_APPS.other;
+
+    if (!connectSelectedApp[connectPlatform] || appIds.indexOf(connectSelectedApp[connectPlatform]) === -1) {
+      const recommended = appIds.find((id) => APP_INFO[id].recommended);
+      connectSelectedApp[connectPlatform] = recommended || appIds[0];
+    }
+    const appId = connectSelectedApp[connectPlatform];
+    const app = APP_INFO[appId];
+
+    els.connectAppSelect.innerHTML = "";
+    if (appIds.length > 1) {
+      els.connectAppSelect.classList.remove("hidden");
+      appIds.forEach((id) => {
+        const info = APP_INFO[id];
+        const opt = document.createElement("button");
+        opt.type = "button";
+        opt.className = "app-option" + (id === appId ? " active" : "");
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = info.name;
+        opt.appendChild(nameSpan);
+        if (info.recommended) {
+          const badge = document.createElement("span");
+          badge.className = "app-option-badge";
+          badge.textContent = "рекомендуем";
+          opt.appendChild(badge);
+        }
+        opt.onclick = () => {
+          connectSelectedApp[connectPlatform] = id;
+          renderConnectDevice();
+        };
+        els.connectAppSelect.appendChild(opt);
+      });
+    } else {
+      els.connectAppSelect.classList.add("hidden");
+    }
+
+    const storeUrl = app.storeUrls[connectPlatform] || app.storeUrls.other || app.storeUrls.ios;
+    const storeLabel = app.storeLabels[connectPlatform] || "Скачать";
+
+    els.connectStepAppName.textContent =
+      app.name + " — рекомендуемое приложение для " + (PLATFORM_LABELS[connectPlatform] || "вашего устройства");
+    els.connectStoreBtn.textContent = "↗ " + storeLabel;
+    els.connectStoreBtn.href = storeUrl;
+    els.connectStoreBtn.onclick = (e) => {
+      if (tg) {
+        e.preventDefault();
+        tg.openLink(storeUrl);
+      }
+    };
+
+    const subUrl = currentSubUrl();
+    els.connectAddSubBtn.disabled = !subUrl;
+    els.connectAddSubBtn.textContent = subUrl ? "+ Добавить подписку" : "Сначала оформите подписку";
+    els.connectAddSubBtn.onclick = () => {
+      if (!subUrl) return;
+      const deepLink = app.scheme + "://add/" + encodeURIComponent(subUrl);
+      if (tg) {
+        tg.openLink(deepLink);
+      } else {
+        window.location.href = deepLink;
+      }
+    };
+  }
+
+  els.connectOtherDeviceBtn.onclick = () => {
+    if (!els.connectPlatformChips.classList.contains("hidden")) {
+      els.connectPlatformChips.classList.add("hidden");
+      return;
+    }
+    els.connectPlatformChips.classList.remove("hidden");
+    els.connectPlatformChips.innerHTML = "";
+    Object.keys(PLATFORM_LABELS).forEach((id) => {
+      const chip = document.createElement("button");
+      chip.className = "chip" + (id === connectPlatform ? " active" : "");
+      chip.textContent = PLATFORM_LABELS[id];
+      chip.onclick = () => {
+        connectPlatform = id;
+        els.connectPlatformChips.classList.add("hidden");
+        renderConnectDevice();
+      };
+      els.connectPlatformChips.appendChild(chip);
+    });
+  };
+
   // ---------- profile / subscription ----------
 
   let cachedPlans = [];
@@ -345,6 +495,7 @@
     renderAutoRenew(profile);
     renderAbout(profile);
     renderAccount(profile);
+    renderConnectDevice();
   }
 
   function renderAbout(profile) {

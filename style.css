@@ -301,20 +301,101 @@ body {
   margin-bottom: 10px;
 }
 
-.connect-steps-list {
-  margin: 0;
-  padding-left: 18px;
+/* ---------- app selector (шаг выбора приложения) ---------- */
+
+.connect-app-select {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.app-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--surface-2);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: left;
+}
+
+.app-option.active {
+  border-color: var(--accent);
+  background: rgba(163, 232, 63, 0.14);
+}
+
+.app-option-badge {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  background: var(--accent);
+  padding: 3px 8px;
+  border-radius: 999px;
+}
+
+/* ---------- connect steps (установка / добавление подписки / подключение) ---------- */
+
+.connect-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.connect-step {
+  display: flex;
+  gap: 12px;
+}
+
+.connect-step-icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.connect-step-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.connect-step-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.connect-step-desc {
   font-size: 13px;
   color: var(--text-dim);
-  line-height: 1.5;
+  line-height: 1.4;
+  margin-bottom: 10px;
 }
 
-.connect-steps-list li {
-  margin-bottom: 6px;
+.connect-step-btn {
+  width: auto;
+  padding: 9px 16px;
+  font-size: 13px;
 }
 
-.connect-steps-list li:last-child {
-  margin-bottom: 0;
+#connect-other-device-btn {
+  margin: 10px 0;
+}
+
+#connect-platform-chips {
+  margin-bottom: 10px;
 }
 
 #connect-no-sub {
