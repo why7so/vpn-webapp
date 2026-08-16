@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Открываем приложение…</title>
+  <link rel="stylesheet" href="style.css?v=3" />
+  <style>
+    .connect-redirect-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 24px;
+      gap: 16px;
+    }
+    .connect-redirect-wrap p {
+      opacity: 0.75;
+      max-width: 320px;
+    }
+  </style>
+</head>
+<body>
+  <div class="connect-redirect-wrap">
+    <div id="status">Открываем приложение…</div>
+    <p>Если приложение не открылось автоматически, нажмите кнопку ниже.</p>
+    <a class="btn btn-standalone" id="manual-open-btn" href="#">Открыть приложение</a>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+      var params = new URLSearchParams(window.location.search);
+      var scheme = params.get("scheme");
+      var url = params.get("url");
+
+      var statusEl = document.getElementById("status");
+      var manualBtn = document.getElementById("manual-open-btn");
+
+      if (!scheme || !url) {
+        statusEl.textContent = "Ссылка повреждена — вернитесь в приложение и попробуйте ещё раз.";
+        manualBtn.classList.add("hidden");
+        return;
+      }
+
+      // url уже содержит закодированную ссылку-подписку (encodeURIComponent
+      // применялся на стороне app.js), поэтому просто подставляем её как есть.
+      var deepLink = scheme + "://add/" + url;
+
+      manualBtn.href = deepLink;
+      manualBtn.onclick = function (e) {
+        e.preventDefault();
+        window.location.href = deepLink;
+      };
+
+      // Автоматическая попытка открыть сразу при загрузке страницы —
+      // сработает, если системный браузер разрешает переход по кастомной
+      // схеме без предварительного клика пользователя (обычно разрешает).
+      window.location.replace(deepLink);
+    })();
+  </script>
+</body>
+</html>

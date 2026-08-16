@@ -130,11 +130,33 @@
   }
 
   async function redeemPromoFromStartParam(code) {
+    // Кнопка (inline-результат, ссылка в посте и т.д.) со startapp=promo_<CODE>
+    // — статична и живёт вечно: каждое повторное открытие приложения по ней
+    // будет снова нести тот же start_param. localStorage — best-effort кэш
+    // (быстро подавляет повтор без похода в сеть), но не единственная линия
+    // защиты: в некоторых режимах открытия Mini App (особенно из
+    // inline-результата) localStorage между запусками может не сохраняться.
+    // Поэтому источник истины — ответ бэкенда: если код уже был погашен
+    // этим пользователем раньше (see database.db.redeem_promo_code —
+    // уникальный PromoRedemption на пользователя), API вернёт ошибку
+    // "уже использовали", и мы просто ничего не показываем — деньги в
+    // любом случае не задваиваются, а лишний попап не нужен.
+    const storageKey = "promo_startparam_shown:" + code;
+    if (localStorage.getItem(storageKey)) return;
+    try {
+      localStorage.setItem(storageKey, "1");
+    } catch (e) {
+      // localStorage недоступен (приватный режим и т.п.) — не страшно,
+      // ниже всё равно подстрахует проверка ответа бэкенда.
+    }
+
     try {
       const result = await api("/api/promo", { method: "POST", body: JSON.stringify({ code: code }) });
       await refreshProfile();
       showTgPopup("🎁 Промокод", shortenForPopup(result.message));
     } catch (e) {
+      const alreadyUsed = typeof e.message === "string" && e.message.indexOf("уже использовали") !== -1;
+      if (alreadyUsed) return; // повторное открытие той же ссылки — молча ничего не делаем
       showTgPopup("Промокод", "❌ " + e.message);
     }
   }
@@ -198,7 +220,9 @@
     promoBtn: document.getElementById("promo-btn"),
 
     devicesText: document.getElementById("devices-text"),
-    devicesPresets: document.getElementById("devices-presets"),
+    devicesQtyLabel: document.getElementById("devices-qty-label"),
+    devicesTrack: document.getElementById("devices-track"),
+    devicesPayMethods: document.getElementById("devices-pay-methods"),
 
     payModal: document.getElementById("pay-modal"),
     payModalPlanLabel: document.getElementById("pay-modal-plan-label"),
@@ -422,7 +446,21 @@
       if (!subUrl) return;
       const deepLink = app.scheme + "://add/" + encodeURIComponent(subUrl);
       if (tg) {
-        tg.openLink(deepLink);
+        // Telegram Mini App WebView не умеет открывать кастомные URI-схемы
+        // (incy://, happ://) — ни через tg.openLink(), ни через обычный
+        // window.location внутри себя (известное ограничение Telegram, см.
+        // https://github.com/tdlib/telegram-bot-api/issues/299). Поэтому
+        // открываем HTTPS-страницу connect.html — Telegram выпускает её во
+        // внешний системный браузер, а тот уже без проблем понимает
+        // кастомные схемы и передаёт их установленному приложению.
+        const redirectUrl =
+          window.location.origin +
+          window.location.pathname.replace(/[^/]*$/, "") +
+          "connect.html?scheme=" +
+          encodeURIComponent(app.scheme) +
+          "&url=" +
+          encodeURIComponent(subUrl);
+        tg.openLink(redirectUrl);
       } else {
         window.location.href = deepLink;
       }
@@ -454,6 +492,7 @@
   let cachedPlans = [];
   let cachedProfile = null;
   let cachedDevices = null;
+  let selectedDeviceQty = 0; // выбранное на оси "Докупить устройства" количество (0 = без доп. устройств)
 
   function renderProfile(profile) {
     cachedProfile = profile;
@@ -866,28 +905,33 @@
     return wrap;
   }
 
+  // Ось "Докупить устройства": та же точечная шкала, что и в модалке тарифа
+  // (renderDeviceTrack). Первая точка — 0 (без доп. устройств), дальше —
+  // qty_presets с бэкенда. Способы оплаты показываются под шкалой и
+  // пересчитываются на выбранное количество; при 0 блок оплаты скрыт.
   function renderDeviceButtons(devices) {
-    els.devicesPresets.innerHTML = "";
-    (devices.qty_presets || []).forEach((qty) => {
-      const priceRub = Math.round(devices.price_rub * qty);
-      const priceUsdt = Math.round(devices.price_usdt * qty * 100) / 100;
+    const values = [0].concat(devices.qty_presets || []);
+    if (values.indexOf(selectedDeviceQty) === -1) selectedDeviceQty = 0;
 
-      const card = document.createElement("div");
-      card.className = "plan-card";
-
-      const title = document.createElement("div");
-      title.className = "plan-title";
-      title.textContent = "+" + qty + " " + deviceWord(qty);
-      card.appendChild(title);
-
-      const price = document.createElement("div");
-      price.className = "plan-price";
-      price.textContent = priceUsdt + "$ / " + priceRub + "₽";
-      card.appendChild(price);
-
-      card.appendChild(deviceQtyButtons(qty, priceRub, priceUsdt));
-      els.devicesPresets.appendChild(card);
+    renderDeviceTrack(els.devicesTrack, values, selectedDeviceQty, (val) => {
+      selectedDeviceQty = val;
+      renderDeviceButtons(cachedDevices);
     });
+
+    els.devicesQtyLabel.textContent =
+      selectedDeviceQty === 0 ? "без доп. устройств" : "+" + selectedDeviceQty + " " + deviceWord(selectedDeviceQty);
+
+    if (selectedDeviceQty === 0) {
+      els.devicesPayMethods.classList.add("hidden");
+      els.devicesPayMethods.innerHTML = "";
+      return;
+    }
+
+    const priceRub = Math.round(devices.price_rub * selectedDeviceQty);
+    const priceUsdt = Math.round(devices.price_usdt * selectedDeviceQty * 100) / 100;
+    els.devicesPayMethods.innerHTML = "";
+    els.devicesPayMethods.appendChild(deviceQtyButtons(selectedDeviceQty, priceRub, priceUsdt));
+    els.devicesPayMethods.classList.remove("hidden");
   }
 
   function renderDevices(devices) {
