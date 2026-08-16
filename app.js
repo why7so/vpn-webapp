@@ -130,6 +130,23 @@
   }
 
   async function redeemPromoFromStartParam(code) {
+    // Кнопка (inline-результат, ссылка в посте и т.д.) со startapp=promo_<CODE>
+    // — статична и живёт вечно: каждое повторное открытие приложения по ней
+    // будет снова нести тот же start_param. Без отметки "уже показывали"
+    // попап с результатом активации всплывал бы при КАЖДОМ таком открытии
+    // (деньги при этом не задваиваются — это чинит уникальный индекс
+    // PromoRedemption на бэкенде, но сам попап надоедливо повторялся бы).
+    // Помечаем как "показано" до похода в API, чтобы не было гонки при
+    // повторном быстром открытии/двойном тапе.
+    const storageKey = "promo_startparam_shown:" + code;
+    if (localStorage.getItem(storageKey)) return;
+    try {
+      localStorage.setItem(storageKey, "1");
+    } catch (e) {
+      // localStorage недоступен (приватный режим и т.п.) — просто не сможем
+      // подавить повтор, но сама активация ниже всё равно безопасна.
+    }
+
     try {
       const result = await api("/api/promo", { method: "POST", body: JSON.stringify({ code: code }) });
       await refreshProfile();
