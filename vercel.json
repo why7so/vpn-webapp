@@ -7,11 +7,5 @@
         { "key": "X-Frame-Options", "value": "ALLOWALL" }
       ]
     }
-  ],
-  "rewrites": [
-    {
-      "source": "/sub/:token",
-      "destination": "https://vpn-bot-production-555c.up.railway.app/sub/:token"
-    }
   ]
 }
