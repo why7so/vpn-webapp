@@ -1106,6 +1106,9 @@
   els.promoShortcut.onclick = () => switchPage("plans-title", els.promoTitle);
 
   function initialPageFromHash() {
+    const params = new URLSearchParams(window.location.search);
+    const pageParam = params.get("page");
+    if (pageParam && PAGE_IDS.includes(pageParam)) return pageParam;
     const hash = (window.location.hash || "").replace("#", "");
     return PAGE_IDS.includes(hash) ? hash : "top";
   }
