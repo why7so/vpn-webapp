@@ -232,6 +232,7 @@
     payModalCancel: document.getElementById("pay-modal-cancel"),
     payModalConfirm: document.getElementById("pay-modal-confirm"),
 
+    brandName: document.getElementById("brand-name"),
     aboutName: document.getElementById("about-name"),
     aboutSupport: document.getElementById("about-support"),
     browserLogoutBtn: document.getElementById("browser-logout-btn"),
@@ -539,6 +540,7 @@
 
   function renderAbout(profile) {
     els.aboutName.textContent = profile.vpn_name || "VPN-сервис";
+    if (profile.vpn_name) els.brandName.textContent = profile.vpn_name;
     els.aboutSupport.textContent = profile.support_username
       ? "По всем вопросам пишите: @" + profile.support_username
       : "Поддержка временно недоступна.";
