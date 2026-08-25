@@ -9,8 +9,8 @@
   --surface-2: #232622;
   --text: #f3f5f1;
   --text-dim: #8b928c;
-  --accent: #a3e83f;
-  --accent-ink: #0e1206;
+  --accent: #52aa52;
+  --accent-ink: #0c1a0c;
   --danger: #ff6b6b;
   --track: rgba(255, 255, 255, 0.1);
 
@@ -327,7 +327,7 @@ body {
 
 .app-option.active {
   border-color: var(--accent);
-  background: rgba(163, 232, 63, 0.14);
+  background: rgba(82, 170, 82, 0.14);
 }
 
 .app-option-badge {
@@ -873,7 +873,7 @@ input:focus {
     align-items: flex-start;
     padding: 56px 24px;
     background:
-      radial-gradient(900px 480px at 50% -8%, rgba(163, 232, 63, 0.07), transparent 62%),
+      radial-gradient(900px 480px at 50% -8%, rgba(82, 170, 82, 0.07), transparent 62%),
       var(--bg);
   }
 
