@@ -48,6 +48,11 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  transition: opacity 0.16s ease;
+}
+
+.page.page-fade {
+  opacity: 0;
 }
 
 #loading {

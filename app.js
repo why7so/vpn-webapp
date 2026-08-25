@@ -1085,11 +1085,42 @@
   function switchPage(targetId, focusEl, skipAnim) {
     if (!PAGE_IDS.includes(targetId)) targetId = "top";
 
-    PAGE_IDS.forEach((id) => {
-      if (pageEls[id]) pageEls[id].classList.toggle("hidden", id !== targetId);
-    });
-    setActiveNav(targetId, skipAnim);
+    const currentId = PAGE_IDS.find((id) => pageEls[id] && !pageEls[id].classList.contains("hidden"));
 
+    // Без анимации: первая загрузка страницы, либо переключение уже на
+    // текущую же вкладку — обычный мгновенный toggle, как раньше.
+    if (skipAnim || !currentId || currentId === targetId || !pageEls[currentId] || !pageEls[targetId]) {
+      PAGE_IDS.forEach((id) => {
+        if (pageEls[id]) pageEls[id].classList.toggle("hidden", id !== targetId);
+      });
+      setActiveNav(targetId, skipAnim);
+      scrollAfterSwitch(focusEl, skipAnim);
+      return;
+    }
+
+    // Плавное переключение: короткий fade-out текущей страницы, подмена
+    // hidden, затем fade-in новой — без абсолютного позиционирования, чтобы
+    // не ловить прыжки высоты контента при overlap двух страниц разом.
+    const outgoing = pageEls[currentId];
+    const incoming = pageEls[targetId];
+
+    setActiveNav(targetId, skipAnim);
+    outgoing.classList.add("page-fade");
+
+    window.setTimeout(() => {
+      outgoing.classList.add("hidden");
+      outgoing.classList.remove("page-fade");
+      incoming.classList.remove("hidden");
+      incoming.classList.add("page-fade");
+      // reflow, чтобы браузer зафиксировал стартовое opacity:0 перед тем,
+      // как мы уберём класс — иначе transition не сыграет (не будет "from")
+      void incoming.offsetWidth;
+      incoming.classList.remove("page-fade");
+      scrollAfterSwitch(focusEl, skipAnim);
+    }, 160);
+  }
+
+  function scrollAfterSwitch(focusEl, skipAnim) {
     if (focusEl) {
       requestAnimationFrame(() => focusEl.scrollIntoView({ behavior: "smooth", block: "start" }));
     } else {
