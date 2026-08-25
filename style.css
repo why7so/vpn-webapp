@@ -9,8 +9,8 @@
   --surface-2: #232622;
   --text: #f3f5f1;
   --text-dim: #8b928c;
-  --accent: #52aa52;
-  --accent-ink: #0c1a0c;
+  --accent: #a3e83f;
+  --accent-ink: #0e1206;
   --danger: #ff6b6b;
   --track: rgba(255, 255, 255, 0.1);
 
@@ -48,11 +48,13 @@ body {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: opacity 0.16s ease;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  transform: translateX(0);
 }
 
-.page.page-fade {
+.page.page-shift {
   opacity: 0;
+  transform: translateX(calc(var(--slide-mult, 1) * 18px));
 }
 
 #loading {
@@ -332,7 +334,7 @@ body {
 
 .app-option.active {
   border-color: var(--accent);
-  background: rgba(82, 170, 82, 0.14);
+  background: rgba(163, 232, 63, 0.14);
 }
 
 .app-option-badge {
@@ -878,7 +880,7 @@ input:focus {
     align-items: flex-start;
     padding: 56px 24px;
     background:
-      radial-gradient(900px 480px at 50% -8%, rgba(82, 170, 82, 0.07), transparent 62%),
+      radial-gradient(900px 480px at 50% -8%, rgba(163, 232, 63, 0.07), transparent 62%),
       var(--bg);
   }
 

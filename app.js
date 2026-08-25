@@ -1098,26 +1098,35 @@
       return;
     }
 
-    // Плавное переключение: короткий fade-out текущей страницы, подмена
-    // hidden, затем fade-in новой — без абсолютного позиционирования, чтобы
-    // не ловить прыжки высоты контента при overlap двух страниц разом.
+    // Плавный слайд: уходящая страница сдвигается в сторону движения по
+    // навбару (влево при переходе "вперёд", вправо — "назад"), новая
+    // заезжает с противоположной стороны. Без абсолютного позиционирования
+    // (переключение последовательное, не внахлёст), чтобы не ловить прыжки
+    // высоты контента.
     const outgoing = pageEls[currentId];
     const incoming = pageEls[targetId];
+    const dir = PAGE_IDS.indexOf(targetId) > PAGE_IDS.indexOf(currentId) ? 1 : -1;
 
     setActiveNav(targetId, skipAnim);
-    outgoing.classList.add("page-fade");
+    outgoing.style.setProperty("--slide-mult", -dir);
+    outgoing.classList.add("page-shift");
 
     window.setTimeout(() => {
       outgoing.classList.add("hidden");
-      outgoing.classList.remove("page-fade");
+      outgoing.classList.remove("page-shift");
+      outgoing.style.removeProperty("--slide-mult");
+
       incoming.classList.remove("hidden");
-      incoming.classList.add("page-fade");
-      // reflow, чтобы браузer зафиксировал стартовое opacity:0 перед тем,
-      // как мы уберём класс — иначе transition не сыграет (не будет "from")
+      incoming.style.setProperty("--slide-mult", dir);
+      incoming.classList.add("page-shift");
+      // reflow, чтобы браузер зафиксировал стартовую позицию перед тем, как
+      // мы уберём класс — иначе transition не сыграет (не будет "from")
       void incoming.offsetWidth;
-      incoming.classList.remove("page-fade");
+      incoming.classList.remove("page-shift");
+      window.setTimeout(() => incoming.style.removeProperty("--slide-mult"), 200);
+
       scrollAfterSwitch(focusEl, skipAnim);
-    }, 160);
+    }, 170);
   }
 
   function scrollAfterSwitch(focusEl, skipAnim) {
