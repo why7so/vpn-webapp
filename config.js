@@ -7,4 +7,4 @@ window.__API_BASE_URL__ = "https://vpn-bot-production-555c.up.railway.app";
 // она нужна, если сайт открыли в обычном браузере (не внутри Telegram) без
 // активной сессии. Ссылка ведёт на t.me/<bot>?start=weblogin, бот выдаёт
 // одноразовую ссылку обратно на сайт (см. handlers/user.py в боте).
-window.__BOT_USERNAME__ = "vpnunnamedbot";
+window.__BOT_USERNAME__ = "jayconnectbot";
