@@ -1082,58 +1082,132 @@
    * уже показанной страницы, к которому нужно проскроллить (используется
    * кнопками-шорткатами "Пополнить"/"Промокод"/"Управлять" с главной).
    */
+  // Длительность перехода берём из CSS (--page-anim), а не дублируем числом:
+  // раньше JS ждал 170мс, а CSS анимировал 180мс, и любая правка одного из
+  // значений молча рассинхронизировала второе.
+  const PAGE_ANIM_MS = (() => {
+    const raw = getComputedStyle(document.documentElement).getPropertyValue("--page-anim").trim();
+    const ms = raw.endsWith("ms") ? parseFloat(raw) : parseFloat(raw) * 1000;
+    return Number.isFinite(ms) && ms > 0 ? ms : 190;
+  })();
+
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+  // Незавершённый переход. Быстрые тапы по навбару раньше накладывались друг на
+  // друга: два независимых setTimeout могли переплестись и оставить страницу
+  // скрытой или сдвинутой. Теперь новый переход сначала мгновенно доигрывает
+  // предыдущий.
+  let pending = null;
+
+  function settlePending() {
+    if (!pending) return;
+    const { outgoing, incoming, timer } = pending;
+    pending = null;
+    window.clearTimeout(timer);
+
+    outgoing.classList.add("hidden");
+    outgoing.classList.remove("page-leaving");
+    outgoing.style.removeProperty("top");
+    outgoing.style.removeProperty("left");
+    outgoing.style.removeProperty("width");
+    outgoing.style.removeProperty("--slide-mult");
+
+    incoming.classList.remove("page-enter");
+    incoming.style.removeProperty("--slide-mult");
+  }
+
+  /**
+   * Переключает видимую страницу. focusEl (необязательно) — элемент внутри
+   * уже показанной страницы, к которому нужно проскроллить (используется
+   * кнопками-шорткатами "Пополнить"/"Промокод"/"Управлять" с главной).
+   */
   function switchPage(targetId, focusEl, skipAnim) {
     if (!PAGE_IDS.includes(targetId)) targetId = "top";
 
-    const currentId = PAGE_IDS.find((id) => pageEls[id] && !pageEls[id].classList.contains("hidden"));
+    settlePending();
 
-    // Без анимации: первая загрузка страницы, либо переключение уже на
-    // текущую же вкладку — обычный мгновенный toggle, как раньше.
-    if (skipAnim || !currentId || currentId === targetId || !pageEls[currentId] || !pageEls[targetId]) {
+    const currentId = PAGE_IDS.find((id) => pageEls[id] && !pageEls[id].classList.contains("hidden"));
+    const instant = skipAnim || reducedMotion.matches;
+
+    // Без анимации: первая загрузка страницы, переключение уже на текущую же
+    // вкладку, либо системная настройка "уменьшить движение".
+    if (instant || !currentId || currentId === targetId || !pageEls[currentId] || !pageEls[targetId]) {
       PAGE_IDS.forEach((id) => {
         if (pageEls[id]) pageEls[id].classList.toggle("hidden", id !== targetId);
       });
       setActiveNav(targetId, skipAnim);
-      scrollAfterSwitch(focusEl, skipAnim);
+      scrollAfterSwitch(focusEl, true);
       return;
     }
 
     // Плавный слайд: уходящая страница сдвигается в сторону движения по
-    // навбару (влево при переходе "вперёд", вправо — "назад"), новая
-    // заезжает с противоположной стороны. Без абсолютного позиционирования
-    // (переключение последовательное, не внахлёст), чтобы не ловить прыжки
-    // высоты контента.
+    // навбару (влево при переходе "вперёд", вправо — "назад"), новая заезжает
+    // с противоположной стороны. Обе анимируются ОДНОВРЕМЕННО: уходящая на
+    // время перехода выводится из потока, поэтому приходящая сразу занимает её
+    // место и задаёт высоту контейнера. Раньше переходы шли последовательно
+    // (сначала 170мс на уход, потом 180мс на приход) — отсюда и ощущение
+    // задержки при переключении вкладок.
     const outgoing = pageEls[currentId];
     const incoming = pageEls[targetId];
     const dir = PAGE_IDS.indexOf(targetId) > PAGE_IDS.indexOf(currentId) ? 1 : -1;
 
     setActiveNav(targetId, skipAnim);
+
+    // Замер ДО вывода из потока: flex-элемент, став position: absolute,
+    // схлопнулся бы по ширине контента и дёрнулся вбок перед уходом.
+    const top = outgoing.offsetTop;
+    const left = outgoing.offsetLeft;
+    const width = outgoing.offsetWidth;
+
+    outgoing.style.top = top + "px";
+    outgoing.style.left = left + "px";
+    outgoing.style.width = width + "px";
     outgoing.style.setProperty("--slide-mult", -dir);
-    outgoing.classList.add("page-shift");
+    outgoing.classList.add("page-leaving");
 
-    window.setTimeout(() => {
-      outgoing.classList.add("hidden");
-      outgoing.classList.remove("page-shift");
-      outgoing.style.removeProperty("--slide-mult");
+    incoming.style.setProperty("--slide-mult", dir);
+    incoming.classList.add("page-enter");
+    incoming.classList.remove("hidden");
 
-      incoming.classList.remove("hidden");
-      incoming.style.setProperty("--slide-mult", dir);
-      incoming.classList.add("page-shift");
-      // reflow, чтобы браузер зафиксировал стартовую позицию перед тем, как
-      // мы уберём класс — иначе transition не сыграет (не будет "from")
-      void incoming.offsetWidth;
-      incoming.classList.remove("page-shift");
-      window.setTimeout(() => incoming.style.removeProperty("--slide-mult"), 200);
+    // Скроллим сразу и мгновенно: контент в этот момент всё равно перекрыт
+    // анимацией, а smooth-скролл поверх перехода растягивал его ещё на
+    // несколько сотен миллисекунд.
+    scrollAfterSwitch(focusEl, true);
 
-      scrollAfterSwitch(focusEl, skipAnim);
-    }, 170);
+    // Два кадра: первый — чтобы браузер зафиксировал стартовое состояние
+    // (снятый hidden + page-enter), второй — чтобы снятие класса стало
+    // отдельным изменением и transition реально сыграл.
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        if (!pending) return;
+        incoming.classList.remove("page-enter");
+      });
+    });
+
+    // transitionend как основной сигнал, таймер — страховка: событие не придёт,
+    // если вкладка ушла в фон или переход был прерван.
+    const onEnd = (e) => {
+      if (e.target !== outgoing) return;
+      outgoing.removeEventListener("transitionend", onEnd);
+      settlePending();
+    };
+    outgoing.addEventListener("transitionend", onEnd);
+
+    pending = {
+      outgoing,
+      incoming,
+      timer: window.setTimeout(() => {
+        outgoing.removeEventListener("transitionend", onEnd);
+        settlePending();
+      }, PAGE_ANIM_MS + 60),
+    };
   }
 
-  function scrollAfterSwitch(focusEl, skipAnim) {
+  function scrollAfterSwitch(focusEl, instant) {
     if (focusEl) {
       requestAnimationFrame(() => focusEl.scrollIntoView({ behavior: "smooth", block: "start" }));
     } else {
-      window.scrollTo({ top: 0, behavior: skipAnim ? "auto" : "smooth" });
+      window.scrollTo({ top: 0, behavior: instant ? "auto" : "smooth" });
     }
   }
 

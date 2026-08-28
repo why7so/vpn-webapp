@@ -5,11 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=3" />
+  <link rel="preload" as="image" href="assets/jay.png" />
+  <link rel="stylesheet" href="style.css?v=4" />
 </head>
 <body>
   <div id="app">
-    <div id="loading" class="screen">Загрузка…</div>
+    <!-- Экран загрузки. Разметку внутри #loading затирают textContent/innerHTML
+         в app.js, когда вместо загрузки нужно показать ошибку или вход через
+         Telegram — анимация в этот момент просто исчезает вместе с ней. -->
+    <div id="loading" class="screen">
+      <div class="loader" role="status" aria-label="Загрузка">
+        <img class="loader-bird" src="assets/jay.png" alt="" width="120" height="120" />
+      </div>
+    </div>
 
     <div id="screen-main" class="screen hidden">
 
@@ -270,6 +278,6 @@
   </div>
 
   <script src="config.js?v=3"></script>
-  <script src="app.js?v=4"></script>
+  <script src="app.js?v=5"></script>
 </body>
 </html>

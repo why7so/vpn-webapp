@@ -14,6 +14,11 @@
   --danger: #ff6b6b;
   --track: rgba(255, 255, 255, 0.1);
 
+  /* Переключение страниц: одна длительность на уходящую и приходящую
+     страницу — они идут внахлёст, а не друг за другом. */
+  --page-anim: 190ms;
+  --page-ease: cubic-bezier(0.22, 1, 0.36, 1);
+
   --r-lg: 24px;
   --r-md: 16px;
   --r-sm: 12px;
@@ -42,19 +47,46 @@ body {
   gap: 12px;
 }
 
+/* Уходящая страница на время анимации выводится из потока (position: absolute)
+   и позиционируется относительно этого контейнера. */
+#screen-main {
+  position: relative;
+}
+
 .page {
   /* Каждая страница — свой flex-контейнер с тем же вертикальным ритмом,
      что раньше был у #screen-main целиком (когда всё шло одним списком) */
   display: flex;
   flex-direction: column;
   gap: 12px;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity var(--page-anim) var(--page-ease),
+              transform var(--page-anim) var(--page-ease);
   transform: translateX(0);
 }
 
-.page.page-shift {
+/* Стартовое состояние приходящей страницы: она уже в потоке и задаёт высоту
+   контейнера, но сдвинута и прозрачна. Снимается на следующем кадре. */
+.page.page-enter {
   opacity: 0;
-  transform: translateX(calc(var(--slide-mult, 1) * 18px));
+  transform: translateX(calc(var(--slide-mult, 1) * 16px));
+}
+
+/* Уходящая страница: выведена из потока, поэтому приходящая занимает её место
+   сразу и обе анимируются ОДНОВРЕМЕННО, а не по очереди. Геометрия (top/left/
+   width) проставляется из JS по замеру до вывода из потока — иначе flex-элемент,
+   став абсолютным, схлопнулся бы по ширине контента. */
+.page.page-leaving {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateX(calc(var(--slide-mult, 1) * 16px));
+}
+
+/* will-change держим только на время перехода: постоянный слой композитора на
+   четырёх страницах — лишняя память без выигрыша, пока никто не переключается. */
+.page.page-enter,
+.page.page-leaving {
+  will-change: opacity, transform;
 }
 
 #loading {
@@ -65,6 +97,47 @@ body {
   font-size: 15px;
   text-align: center;
   padding: 0 24px;
+}
+
+/* ---------- анимация загрузки ---------- */
+
+.loader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Лого-сойка «парит»: подъём с лёгким наклоном и едва заметным масштабом.
+   Наклон и подъём в одной дорожке — на взмахе птица одновременно идёт вверх
+   и задирает нос, как в реальном полёте; разведи их по разным анимациям —
+   и движение начнёт выглядеть механическим.
+
+   У jay.png непрозрачный тёмный фон: на чистом --bg он сливается, но на
+   десктопе (>=720px) под #loading лежит зеленоватый радиальный градиент, и
+   квадрат проступает — особенно на наклоне. mix-blend-mode: lighten решает
+   это без правки самого файла: попиксельно берётся максимум из подложки и
+   картинки, поэтому почти чёрный фон лого всегда проигрывает подложке и
+   пропадает, а светло-зелёная графика остаётся собой.
+
+   Работает именно потому, что тема приложения жёстко тёмная (см. :root) —
+   на светлой подложке lighten вымыл бы и саму птицу. */
+.loader-bird {
+  display: block;
+  width: 120px;
+  height: 120px;
+  mix-blend-mode: lighten;
+  animation: loader-fly 2.4s ease-in-out infinite;
+  will-change: transform;
+}
+
+@keyframes loader-fly {
+  0%,
+  100% {
+    transform: translateY(5px) rotate(-2.5deg) scale(0.97);
+  }
+  50% {
+    transform: translateY(-9px) rotate(2.5deg) scale(1.03);
+  }
 }
 
 /* ---------- top bar ---------- */
@@ -801,7 +874,7 @@ input:focus {
   pointer-events: none;
   z-index: 0;
   will-change: transform;
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform var(--page-anim) var(--page-ease);
 }
 
 .nav-indicator.no-anim {
@@ -846,8 +919,31 @@ input:focus {
 @media (prefers-reduced-motion: reduce) {
   .nav-indicator,
   .nav-item,
-  .nav-item svg {
+  .nav-item svg,
+  .page {
     transition: none !important;
+  }
+
+  /* Полёт убираем, но совсем статичный экран читался бы как зависший —
+     оставляем мягкую пульсацию прозрачности без движения. */
+  .loader-bird {
+    animation: loader-fade 1.8s ease-in-out infinite;
+  }
+
+  @keyframes loader-fade {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  /* Без анимации сдвиг не нужен — иначе страница просто прыгает вбок */
+  .page.page-enter,
+  .page.page-leaving {
+    transform: none;
   }
 }
 
