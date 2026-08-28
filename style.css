@@ -107,36 +107,79 @@ body {
   justify-content: center;
 }
 
-/* Лого-сойка «парит»: подъём с лёгким наклоном и едва заметным масштабом.
-   Наклон и подъём в одной дорожке — на взмахе птица одновременно идёт вверх
-   и задирает нос, как в реальном полёте; разведи их по разным анимациям —
-   и движение начнёт выглядеть механическим.
+/* Лого-сойка «рисуется»: контуры обводятся по одному, затем внутрь
+   заливается цвет, и всё гаснет перед следующим кругом.
 
-   У jay.png непрозрачный тёмный фон: на чистом --bg он сливается, но на
-   десктопе (>=720px) под #loading лежит зеленоватый радиальный градиент, и
-   квадрат проступает — особенно на наклоне. mix-blend-mode: lighten решает
-   это без правки самого файла: попиксельно берётся максимум из подложки и
-   картинки, поэтому почти чёрный фон лого всегда проигрывает подложке и
-   пропадает, а светло-зелёная графика остаётся собой.
+   Логотип здесь — инлайновый SVG (контуры оттрассированы из assets/jay.png,
+   IoU с оригиналом ≈0.96), а не сам PNG: обвести штрихом можно только
+   вектор. Побочно это убрало старый костыль mix-blend-mode: lighten — он
+   был нужен, чтобы прятать непрозрачный тёмный фон PNG поверх зеленоватого
+   градиента на десктопе. У SVG фона нет вовсе.
 
-   Работает именно потому, что тема приложения жёстко тёмная (см. :root) —
-   на светлой подложке lighten вымыл бы и саму птицу. */
-.loader-bird {
+   pathLength="1" на каждом path нормирует длину контура к единице, поэтому
+   один и тот же stroke-dasharray: 1 подходит всем пяти фигурам — иначе
+   пришлось бы прописывать реальную длину каждой (от 57 до 1233 единиц).
+
+   Обводка гаснет ровно тогда, когда набирает силу заливка: если оставить
+   её, лого в покое выглядит толще настоящего — штрих шириной 9 добавляет
+   по 4.5 единицы с каждой стороны. */
+.loader-jay {
   display: block;
   width: 120px;
   height: 120px;
-  mix-blend-mode: lighten;
-  animation: loader-fly 2.4s ease-in-out infinite;
-  will-change: transform;
 }
 
-@keyframes loader-fly {
-  0%,
-  100% {
-    transform: translateY(5px) rotate(-2.5deg) scale(0.97);
+.loader-jay path {
+  fill: var(--accent);
+  fill-opacity: 0;
+  stroke: var(--accent);
+  stroke-width: 9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation:
+    jay-draw 3s cubic-bezier(0.65, 0, 0.35, 1) infinite,
+    jay-fill 3s linear infinite;
+}
+
+/* Порядок рисовки задан порядком в разметке: тело с хохолком, крыло, глаз,
+   затем линии скорости сверху вниз. Сдвиги небольшие — контуры должны
+   ложиться внахлёст, иначе пауза между ними читается как подвисание. */
+.loader-jay path:nth-child(1) { animation-delay: 0s; }
+.loader-jay path:nth-child(2) { animation-delay: 0.16s; }
+.loader-jay path:nth-child(3) { animation-delay: 0.3s; }
+.loader-jay path:nth-child(4) { animation-delay: 0.38s; }
+.loader-jay path:nth-child(5) { animation-delay: 0.46s; }
+
+@keyframes jay-draw {
+  0% {
+    stroke-dashoffset: 1;
+    stroke-opacity: 1;
   }
-  50% {
-    transform: translateY(-9px) rotate(2.5deg) scale(1.03);
+  38% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 1;
+  }
+  54%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-opacity: 0;
+  }
+}
+
+@keyframes jay-fill {
+  0%,
+  36% {
+    fill-opacity: 0;
+  }
+  54%,
+  80% {
+    fill-opacity: 1;
+  }
+  95%,
+  100% {
+    fill-opacity: 0;
   }
 }
 
@@ -982,19 +1025,23 @@ input:focus {
     transition: none !important;
   }
 
-  /* Полёт убираем, но совсем статичный экран читался бы как зависший —
-     оставляем мягкую пульсацию прозрачности без движения. */
-  .loader-bird {
+  /* Рисовку убираем: показываем сразу готовый залитый логотип. Совсем
+     статичный экран читался бы как зависший, поэтому оставляем мягкую
+     пульсацию прозрачности — она без движения и без «черчения». */
+  .loader-jay path {
+    fill-opacity: 1;
+    stroke-opacity: 0;
+    stroke-dashoffset: 0;
     animation: loader-fade 1.8s ease-in-out infinite;
   }
 
   @keyframes loader-fade {
     0%,
     100% {
-      opacity: 0.5;
+      fill-opacity: 0.45;
     }
     50% {
-      opacity: 1;
+      fill-opacity: 1;
     }
   }
 
