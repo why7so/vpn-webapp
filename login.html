@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Вход — Jay Connect</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <link rel="preload" as="image" href="assets/jay.png" />
+  <link rel="stylesheet" href="style.css?v=5" />
+  <style>
+    /* Отдельная страница входа: собственный центрирующий контейнер, чтобы не
+       зависеть от раскладки основного приложения. Токены/кнопки/инпут берём
+       из style.css. */
+    body {
+      padding: 24px 16px;
+      min-height: 100vh;
+      min-height: 100dvh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .auth-card {
+      width: 100%;
+      max-width: 380px;
+      background: var(--surface);
+      border: 1px solid var(--surface-2);
+      border-radius: var(--r-lg);
+      padding: 30px 26px 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      text-align: center;
+    }
+
+    .auth-logo {
+      width: 52px;
+      height: 52px;
+      align-self: center;
+      margin-bottom: 2px;
+      border-radius: var(--r-sm);
+    }
+
+    .auth-card h1 {
+      margin: 0;
+      font-size: 19px;
+      font-weight: 700;
+    }
+
+    .auth-sub {
+      margin: -6px 0 6px;
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.45;
+    }
+
+    .auth-card input {
+      width: 100%;
+      flex: none;
+      text-align: center;
+    }
+
+    #auth-code {
+      font-size: 20px;
+      letter-spacing: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .btn.block {
+      flex: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 12px 14px;
+      text-decoration: none;
+    }
+    .btn.block svg { flex: none; opacity: 0.85; }
+
+    /* Главная кнопка «по почте» — светлая, как в референсе. */
+    .btn.block.primary-light {
+      background: var(--text);
+      color: var(--bg);
+    }
+
+    .auth-divider {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--text-dim);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin: 2px 0;
+    }
+    .auth-divider::before,
+    .auth-divider::after {
+      content: "";
+      flex: 1;
+      height: 1px;
+      background: var(--surface-2);
+    }
+
+    .auth-error {
+      color: var(--danger);
+      font-size: 13px;
+      line-height: 1.4;
+      min-height: 1em;
+    }
+
+    .auth-link-btn {
+      background: none;
+      border: none;
+      color: var(--text-dim);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 4px;
+      text-decoration: underline;
+    }
+
+    .auth-foot {
+      font-size: 12px;
+      color: var(--text-dim);
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+    .auth-foot a {
+      color: var(--text-dim);
+    }
+
+    .auth-step {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .auth-step.hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <div class="auth-card">
+    <img class="auth-logo" src="assets/jay.png" alt="" width="56" height="56" />
+    <h1 id="auth-title">Вход в Jay&nbsp;Connect</h1>
+
+    <!-- Шаг 1: почта -->
+    <div class="auth-step" id="step-email">
+      <div class="auth-sub">Вход или регистрация — код придёт на почту.</div>
+      <input
+        id="auth-email"
+        type="email"
+        inputmode="email"
+        autocomplete="email"
+        placeholder="you@example.com"
+      />
+      <button class="btn block primary-light" id="btn-email">Продолжить по почте</button>
+
+      <div class="auth-divider" id="tg-divider">или</div>
+
+      <a class="btn block secondary" id="btn-telegram" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+          <path fill="currentColor" d="M21.9 4.3 18.7 19.4c-.24 1.06-.87 1.32-1.77.82l-4.88-3.6-2.35 2.27c-.26.26-.48.48-.98.48l.35-4.96 9.03-8.16c.39-.35-.09-.55-.6-.2L4.7 13.02l-4.8-1.5c-1.04-.33-1.06-1.04.22-1.54l18.8-7.25c.87-.32 1.63.2 1.35 1.57z"/>
+        </svg>
+        Продолжить через&nbsp;Telegram
+      </a>
+
+      <div class="auth-error" id="auth-error"></div>
+    </div>
+
+    <!-- Шаг 2: код из письма -->
+    <div class="auth-step hidden" id="step-code">
+      <div class="auth-sub" id="code-sub">Код отправлен на почту</div>
+      <input
+        id="auth-code"
+        type="text"
+        inputmode="numeric"
+        autocomplete="one-time-code"
+        maxlength="6"
+        placeholder="000000"
+      />
+      <button class="btn block primary-light" id="btn-code">Войти</button>
+      <button class="auth-link-btn" id="btn-back">Изменить почту</button>
+      <div class="auth-error" id="auth-error-2"></div>
+    </div>
+
+    <div class="auth-foot">
+      Продолжая, вы принимаете
+      <a href="terms.html">условия</a> и
+      <a href="privacy.html">политику конфиденциальности</a>.
+    </div>
+  </div>
+
+  <script src="config.js?v=3"></script>
+  <script>
+    (function () {
+      "use strict";
+      var API = (window.__API_BASE_URL__ || "").replace(/\/$/, "");
+      var BOT = window.__BOT_USERNAME__ || "";
+      var SESSION_KEY = "vpn_session_token";
+      var tg = window.Telegram && window.Telegram.WebApp;
+
+      // Уже вошли (сохранённая сессия) либо открыто внутри Telegram — на
+      // странице входа делать нечего, уходим в кабинет. search сохраняем:
+      // в нём может быть ?login_token=... от бота, его обработает index.
+      var hasSession = false;
+      try { hasSession = !!localStorage.getItem(SESSION_KEY); } catch (e) {}
+      if (hasSession || (tg && tg.initData) || new URLSearchParams(location.search).get("login_token")) {
+        location.replace("index.html" + location.search);
+        return;
+      }
+
+      var els = {
+        title: document.getElementById("auth-title"),
+        stepEmail: document.getElementById("step-email"),
+        stepCode: document.getElementById("step-code"),
+        email: document.getElementById("auth-email"),
+        code: document.getElementById("auth-code"),
+        btnEmail: document.getElementById("btn-email"),
+        btnCode: document.getElementById("btn-code"),
+        btnBack: document.getElementById("btn-back"),
+        btnTelegram: document.getElementById("btn-telegram"),
+        tgDivider: document.getElementById("tg-divider"),
+        err: document.getElementById("auth-error"),
+        err2: document.getElementById("auth-error-2"),
+        codeSub: document.getElementById("code-sub"),
+      };
+
+      if (BOT) {
+        els.btnTelegram.href = "https://t.me/" + BOT.replace(/^@/, "") + "?start=weblogin";
+      } else {
+        els.btnTelegram.classList.add("hidden");
+        els.tgDivider.classList.add("hidden");
+      }
+
+      var pendingEmail = "";
+
+      function setBusy(btn, busy, busyText, idleText) {
+        btn.disabled = busy;
+        btn.textContent = busy ? busyText : idleText;
+      }
+
+      async function postJson(path, body) {
+        var resp = await fetch(API + path, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        var data = null;
+        try { data = await resp.json(); } catch (e) {}
+        if (!resp.ok) throw new Error((data && data.error) || ("Ошибка сервера (" + resp.status + ")"));
+        return data || {};
+      }
+
+      async function requestCode() {
+        var email = (els.email.value || "").trim();
+        if (!email) { els.err.textContent = "Введите адрес почты"; return; }
+        els.err.textContent = "";
+        setBusy(els.btnEmail, true, "Отправляем…", "");
+        try {
+          await postJson("/api/email/login/request", { email: email });
+          pendingEmail = email;
+          els.codeSub.textContent = "Код отправлен на " + email;
+          els.stepEmail.classList.add("hidden");
+          els.stepCode.classList.remove("hidden");
+          els.title.textContent = "Введите код";
+          els.code.focus();
+        } catch (e) {
+          els.err.textContent = e.message;
+        } finally {
+          setBusy(els.btnEmail, false, "", "Продолжить по почте");
+        }
+      }
+
+      async function confirmCode() {
+        var code = (els.code.value || "").trim();
+        if (!code) { els.err2.textContent = "Введите код из письма"; return; }
+        els.err2.textContent = "";
+        setBusy(els.btnCode, true, "Входим…", "");
+        try {
+          var data = await postJson("/api/email/login/confirm", { email: pendingEmail, code: code });
+          try { localStorage.setItem(SESSION_KEY, data.session_token); } catch (e) {}
+          location.replace("index.html");
+        } catch (e) {
+          els.err2.textContent = e.message;
+          setBusy(els.btnCode, false, "", "Войти");
+        }
+      }
+
+      function backToEmail() {
+        els.err2.textContent = "";
+        els.code.value = "";
+        els.stepCode.classList.add("hidden");
+        els.stepEmail.classList.remove("hidden");
+        els.title.innerHTML = "Вход в Jay&nbsp;Connect";
+        els.email.focus();
+      }
+
+      els.btnEmail.onclick = requestCode;
+      els.btnCode.onclick = confirmCode;
+      els.btnBack.onclick = backToEmail;
+      els.email.onkeydown = function (e) { if (e.key === "Enter") requestCode(); };
+      els.code.onkeydown = function (e) { if (e.key === "Enter") confirmCode(); };
+
+      if (!API || API.indexOf("example.com") !== -1) {
+        els.err.textContent = "Не настроен адрес API (config.js).";
+        els.btnEmail.disabled = true;
+      }
+    })();
+  </script>
+</body>
+</html>

@@ -65,143 +65,11 @@
     }
   }
 
-  function showBrowserLoginScreen() {
-    // Почта — самостоятельный способ входа И регистрации: незнакомый адрес на
-    // шаге подтверждения кода создаёт новый аккаунт (tg_id = None), знакомый —
-    // входит в существующий. Ссылка из бота — второй способ, для тех, кто
-    // начал с Telegram. Оба заканчиваются браузерной сессией одного аккаунта
-    // (см. webapp/api.py, раздел «вход/регистрация по почте»).
-    const tgBlock = BOT_USERNAME
-      ? '<a class="btn btn-standalone" href="https://t.me/' +
-        BOT_USERNAME +
-        '?start=weblogin" target="_blank" rel="noopener">Войти через Telegram</a>' +
-        '<div class="email-hint" style="margin-top:14px">или по почте — ниже</div>'
-      : "";
-
-    els.loading.innerHTML =
-      '<div class="login-box">' +
-      tgBlock +
-      '<div class="email-form" id="login-email-form">' +
-      '<div class="email-hint">Вход или регистрация по почте — на неё придёт код.</div>' +
-      '<input id="login-email-input" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" />' +
-      '<button class="btn secondary btn-standalone" id="login-email-send">Получить код</button>' +
-      "</div>" +
-      '<div class="email-form hidden" id="login-code-form">' +
-      '<div class="email-hint" id="login-code-hint">Код отправлен на почту</div>' +
-      '<input id="login-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" />' +
-      '<button class="btn btn-standalone" id="login-code-confirm">Войти</button>' +
-      '<button class="btn secondary btn-standalone" id="login-code-back">Другая почта</button>' +
-      "</div>" +
-      '<div class="email-hint login-error hidden" id="login-error"></div>' +
-      "</div>";
-
-    wireEmailLoginScreen();
+  // Вход/регистрация вынесены на отдельную страницу login.html
+  // (оформление в стиле карточки Anthropic: почта + Telegram).
+  function goToLoginPage() {
+    window.location.replace("login.html" + window.location.search);
   }
-
-  /**
-   * Экран входа по почте. Живёт внутри #loading, а не в основном приложении:
-   * до успешного входа основного экрана ещё нет, а разметку #loading всё равно
-   * перерисовывают целиком.
-   */
-  function wireEmailLoginScreen() {
-    const emailForm = document.getElementById("login-email-form");
-    const codeForm = document.getElementById("login-code-form");
-    const emailInput = document.getElementById("login-email-input");
-    const codeInput = document.getElementById("login-code-input");
-    const sendBtn = document.getElementById("login-email-send");
-    const confirmBtn = document.getElementById("login-code-confirm");
-    const backBtn = document.getElementById("login-code-back");
-    const errorEl = document.getElementById("login-error");
-    const hintEl = document.getElementById("login-code-hint");
-    if (!emailForm || !codeForm) return;
-
-    let pendingEmail = "";
-
-    function showError(message) {
-      errorEl.textContent = message || "";
-      errorEl.classList.toggle("hidden", !message);
-    }
-
-    async function requestCode() {
-      const email = (emailInput.value || "").trim();
-      if (!email) {
-        showError("Введите адрес почты");
-        return;
-      }
-      showError("");
-      sendBtn.disabled = true;
-      sendBtn.textContent = "Отправляем…";
-      try {
-        const resp = await fetch(API_BASE_URL + "/api/email/login/request", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: email }),
-        });
-        const data = await resp.json().catch(() => null);
-        if (!resp.ok) throw new Error((data && data.error) || "Не удалось отправить код");
-
-        pendingEmail = email;
-        hintEl.textContent = "Код отправлен на " + email;
-        emailForm.classList.add("hidden");
-        codeForm.classList.remove("hidden");
-        codeInput.focus();
-      } catch (e) {
-        showError(e.message);
-      } finally {
-        sendBtn.disabled = false;
-        sendBtn.textContent = "Получить код";
-      }
-    }
-
-    async function confirmCode() {
-      const code = (codeInput.value || "").trim();
-      if (!code) {
-        showError("Введите код из письма");
-        return;
-      }
-      showError("");
-      confirmBtn.disabled = true;
-      confirmBtn.textContent = "Входим…";
-      try {
-        const resp = await fetch(API_BASE_URL + "/api/email/login/confirm", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: pendingEmail, code: code }),
-        });
-        const data = await resp.json().catch(() => null);
-        if (!resp.ok) throw new Error((data && data.error) || "Не удалось войти");
-
-        sessionToken = data.session_token;
-        localStorage.setItem(SESSION_STORAGE_KEY, sessionToken);
-        // Перезагружаем страницу, а не дорисовываем состояние руками: весь
-        // бутстрап (профиль, устройства, тарифы) уже написан для «холодного»
-        // старта с готовой сессией, и повторять его здесь значило бы завести
-        // второй путь инициализации.
-        window.location.reload();
-      } catch (e) {
-        showError(e.message);
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = "Войти";
-      }
-    }
-
-    sendBtn.onclick = requestCode;
-    confirmBtn.onclick = confirmCode;
-    backBtn.onclick = () => {
-      showError("");
-      codeInput.value = "";
-      codeForm.classList.add("hidden");
-      emailForm.classList.remove("hidden");
-      emailInput.focus();
-    };
-    emailInput.onkeydown = (e) => {
-      if (e.key === "Enter") requestCode();
-    };
-    codeInput.onkeydown = (e) => {
-      if (e.key === "Enter") confirmCode();
-    };
-  }
-
   // ---------- popup с результатом активации промокода ----------
   // Кнопка "Активировать" промокода (в боте) ведёт сюда с параметром
   // ?promo_popup=..., чтобы результат показывался всплывающим окном внутри
@@ -1531,7 +1399,7 @@
     if (!authOk) {
       // если был login_token и обмен не удался, ensureBrowserAuth уже показал
       // текст ошибки — не затираем его общим экраном входа
-      if (!incomingLoginToken) showBrowserLoginScreen();
+      if (!incomingLoginToken) goToLoginPage();
       return;
     }
 
@@ -1568,6 +1436,12 @@
         showPromoPopupIfAny();
       }
     } catch (e) {
+      // Протухшая браузерная сессия: api() при 401 уже вычистил токен и обнулил
+      // sessionToken — отправляем на страницу входа, а не показываем ошибку.
+      if (!initData && !sessionToken) {
+        goToLoginPage();
+        return;
+      }
       els.loading.textContent = "Ошибка загрузки: " + e.message;
     }
   }
