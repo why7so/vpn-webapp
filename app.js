@@ -66,16 +66,141 @@
   }
 
   function showBrowserLoginScreen() {
-    if (BOT_USERNAME) {
-      const loginUrl = "https://t.me/" + BOT_USERNAME + "?start=weblogin";
-      els.loading.innerHTML =
-        '<div>Откройте личный кабинет через Telegram:</div>' +
-        '<a class="btn btn-standalone" href="' +
-        loginUrl +
-        '" target="_blank" rel="noopener">Войти через Telegram</a>';
-    } else {
-      els.loading.textContent = "Откройте мини-приложение через кнопку в Telegram-боте.";
+    // Два равноправных способа войти в ОДИН И ТОТ ЖЕ аккаунт: ссылка из бота
+    // и код на привязанную почту. Оба заканчиваются браузерной сессией с тем
+    // же tg_id, поэтому «синхронизировать» после входа нечего — данные и так
+    // одни (см. webapp/api.py, раздел «вход по почте»).
+    const tgBlock = BOT_USERNAME
+      ? '<a class="btn btn-standalone" href="https://t.me/' +
+        BOT_USERNAME +
+        '?start=weblogin" target="_blank" rel="noopener">Войти через Telegram</a>' +
+        '<div class="email-hint" style="margin-top:14px">или войдите по почте, если привязали её в кабинете</div>'
+      : '<div class="email-hint">Войдите по почте, привязанной в личном кабинете.</div>';
+
+    els.loading.innerHTML =
+      '<div class="login-box">' +
+      tgBlock +
+      '<div class="email-form" id="login-email-form">' +
+      '<input id="login-email-input" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" />' +
+      '<button class="btn secondary btn-standalone" id="login-email-send">Получить код</button>' +
+      "</div>" +
+      '<div class="email-form hidden" id="login-code-form">' +
+      '<div class="email-hint" id="login-code-hint">Код отправлен на почту</div>' +
+      '<input id="login-code-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" />' +
+      '<button class="btn btn-standalone" id="login-code-confirm">Войти</button>' +
+      '<button class="btn secondary btn-standalone" id="login-code-back">Другая почта</button>' +
+      "</div>" +
+      '<div class="email-hint login-error hidden" id="login-error"></div>' +
+      "</div>";
+
+    wireEmailLoginScreen();
+  }
+
+  /**
+   * Экран входа по почте. Живёт внутри #loading, а не в основном приложении:
+   * до успешного входа основного экрана ещё нет, а разметку #loading всё равно
+   * перерисовывают целиком.
+   */
+  function wireEmailLoginScreen() {
+    const emailForm = document.getElementById("login-email-form");
+    const codeForm = document.getElementById("login-code-form");
+    const emailInput = document.getElementById("login-email-input");
+    const codeInput = document.getElementById("login-code-input");
+    const sendBtn = document.getElementById("login-email-send");
+    const confirmBtn = document.getElementById("login-code-confirm");
+    const backBtn = document.getElementById("login-code-back");
+    const errorEl = document.getElementById("login-error");
+    const hintEl = document.getElementById("login-code-hint");
+    if (!emailForm || !codeForm) return;
+
+    let pendingEmail = "";
+
+    function showError(message) {
+      errorEl.textContent = message || "";
+      errorEl.classList.toggle("hidden", !message);
     }
+
+    async function requestCode() {
+      const email = (emailInput.value || "").trim();
+      if (!email) {
+        showError("Введите адрес почты");
+        return;
+      }
+      showError("");
+      sendBtn.disabled = true;
+      sendBtn.textContent = "Отправляем…";
+      try {
+        const resp = await fetch(API_BASE_URL + "/api/email/login/request", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: email }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok) throw new Error((data && data.error) || "Не удалось отправить код");
+
+        pendingEmail = email;
+        // Сервер намеренно отвечает "ok" и для незарегистрированной почты,
+        // чтобы по нему нельзя было проверять, есть ли такой клиент. Поэтому
+        // и текст здесь обтекаемый — «если привязана», а не «код отправлен».
+        hintEl.textContent = "Если эта почта привязана к аккаунту, код уже отправлен на " + email;
+        emailForm.classList.add("hidden");
+        codeForm.classList.remove("hidden");
+        codeInput.focus();
+      } catch (e) {
+        showError(e.message);
+      } finally {
+        sendBtn.disabled = false;
+        sendBtn.textContent = "Получить код";
+      }
+    }
+
+    async function confirmCode() {
+      const code = (codeInput.value || "").trim();
+      if (!code) {
+        showError("Введите код из письма");
+        return;
+      }
+      showError("");
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = "Входим…";
+      try {
+        const resp = await fetch(API_BASE_URL + "/api/email/login/confirm", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: pendingEmail, code: code }),
+        });
+        const data = await resp.json().catch(() => null);
+        if (!resp.ok) throw new Error((data && data.error) || "Не удалось войти");
+
+        sessionToken = data.session_token;
+        localStorage.setItem(SESSION_STORAGE_KEY, sessionToken);
+        // Перезагружаем страницу, а не дорисовываем состояние руками: весь
+        // бутстрап (профиль, устройства, тарифы) уже написан для «холодного»
+        // старта с готовой сессией, и повторять его здесь значило бы завести
+        // второй путь инициализации.
+        window.location.reload();
+      } catch (e) {
+        showError(e.message);
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = "Войти";
+      }
+    }
+
+    sendBtn.onclick = requestCode;
+    confirmBtn.onclick = confirmCode;
+    backBtn.onclick = () => {
+      showError("");
+      codeInput.value = "";
+      codeForm.classList.add("hidden");
+      emailForm.classList.remove("hidden");
+      emailInput.focus();
+    };
+    emailInput.onkeydown = (e) => {
+      if (e.key === "Enter") requestCode();
+    };
+    codeInput.onkeydown = (e) => {
+      if (e.key === "Enter") confirmCode();
+    };
   }
 
   // ---------- popup с результатом активации промокода ----------
@@ -239,6 +364,18 @@
 
     accountTgId: document.getElementById("account-tg-id"),
     accountUsername: document.getElementById("account-username"),
+    emailHint: document.getElementById("email-hint"),
+    emailBound: document.getElementById("email-bound"),
+    emailBoundValue: document.getElementById("email-bound-value"),
+    emailUnbindBtn: document.getElementById("email-unbind-btn"),
+    emailBindForm: document.getElementById("email-bind-form"),
+    emailBindInput: document.getElementById("email-bind-input"),
+    emailBindSend: document.getElementById("email-bind-send"),
+    emailCodeForm: document.getElementById("email-code-form"),
+    emailCodeHint: document.getElementById("email-code-hint"),
+    emailCodeInput: document.getElementById("email-code-input"),
+    emailCodeConfirm: document.getElementById("email-code-confirm"),
+    emailCodeCancel: document.getElementById("email-code-cancel"),
 
     bottomNav: document.getElementById("bottom-nav"),
     navItems: document.querySelectorAll(".nav-item"),
@@ -549,7 +686,110 @@
   function renderAccount(profile) {
     els.accountTgId.textContent = profile.tg_id != null ? String(profile.tg_id) : "—";
     els.accountUsername.textContent = profile.username ? "@" + profile.username : "—";
+    renderEmailSection(profile.email || null);
   }
+
+  // ---------- привязка почты ----------
+  // Почта — второй способ входа в этот же аккаунт, а не отдельная учётка,
+  // поэтому привязка доступна только отсюда: запрос уходит с уже действующей
+  // авторизацией (initData или Bearer), и сервер знает, к какому tg_id вязать.
+
+  // Адрес, на который отправлен код привязки. Нужен на шаге подтверждения:
+  // поле ввода к этому моменту уже скрыто, а сервер сверяет код именно с ним.
+  let pendingBindEmail = "";
+
+  function renderEmailSection(email) {
+    const bound = !!email;
+    els.emailBound.classList.toggle("hidden", !bound);
+    els.emailBoundValue.textContent = email || "—";
+    els.emailHint.textContent = bound
+      ? "По этой почте можно войти в кабинет в браузере без Telegram."
+      : "Привяжите почту, чтобы входить в личный кабинет в браузере без Telegram.";
+    // Формы привязки прячем, когда почта уже есть: сменить адрес = сначала
+    // отвязать, иначе пришлось бы отдельно разбирать «перепривязку» и держать
+    // в голове, какой из двух адресов сейчас действующий.
+    els.emailBindForm.classList.toggle("hidden", bound);
+    els.emailCodeForm.classList.add("hidden");
+    els.emailCodeInput.value = "";
+  }
+
+  async function requestBindCode() {
+    const email = (els.emailBindInput.value || "").trim();
+    if (!email) {
+      showToast("Введите адрес почты", true);
+      return;
+    }
+    els.emailBindSend.disabled = true;
+    els.emailBindSend.textContent = "Отправляем…";
+    try {
+      await api("/api/email/bind/request", {
+        method: "POST",
+        body: JSON.stringify({ email: email }),
+      });
+      pendingBindEmail = email;
+      els.emailCodeHint.textContent = "Код отправлен на " + email;
+      els.emailBindForm.classList.add("hidden");
+      els.emailCodeForm.classList.remove("hidden");
+      els.emailCodeInput.focus();
+    } catch (e) {
+      showToast(e.message, true);
+    } finally {
+      els.emailBindSend.disabled = false;
+      els.emailBindSend.textContent = "Выслать код";
+    }
+  }
+
+  async function confirmBindCode() {
+    const code = (els.emailCodeInput.value || "").trim();
+    if (!code) {
+      showToast("Введите код из письма", true);
+      return;
+    }
+    els.emailCodeConfirm.disabled = true;
+    els.emailCodeConfirm.textContent = "Проверяем…";
+    try {
+      const result = await api("/api/email/bind/confirm", {
+        method: "POST",
+        body: JSON.stringify({ email: pendingBindEmail, code: code }),
+      });
+      renderEmailSection(result.email);
+      showToast("Почта привязана");
+    } catch (e) {
+      showToast(e.message, true);
+    } finally {
+      els.emailCodeConfirm.disabled = false;
+      els.emailCodeConfirm.textContent = "Подтвердить";
+    }
+  }
+
+  async function unbindEmail() {
+    els.emailUnbindBtn.disabled = true;
+    try {
+      await api("/api/email/unbind", { method: "POST" });
+      els.emailBindInput.value = "";
+      renderEmailSection(null);
+      showToast("Почта отвязана");
+    } catch (e) {
+      showToast(e.message, true);
+    } finally {
+      els.emailUnbindBtn.disabled = false;
+    }
+  }
+
+  els.emailBindSend.onclick = requestBindCode;
+  els.emailCodeConfirm.onclick = confirmBindCode;
+  els.emailUnbindBtn.onclick = unbindEmail;
+  els.emailCodeCancel.onclick = () => {
+    els.emailCodeForm.classList.add("hidden");
+    els.emailBindForm.classList.remove("hidden");
+    els.emailCodeInput.value = "";
+  };
+  els.emailBindInput.onkeydown = (e) => {
+    if (e.key === "Enter") requestBindCode();
+  };
+  els.emailCodeInput.onkeydown = (e) => {
+    if (e.key === "Enter") confirmBindCode();
+  };
 
   // Бэкенд в этой версии API не отдаёт поле автопродления явно.
   // Блок рассчитан на необязательное поле profile.auto_renew (true/false).

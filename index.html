@@ -6,7 +6,7 @@
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preload" as="image" href="assets/jay.png" />
-  <link rel="stylesheet" href="style.css?v=4" />
+  <link rel="stylesheet" href="style.css?v=5" />
 </head>
 <body>
   <div id="app">
@@ -176,6 +176,54 @@
           </div>
         </div>
 
+        <!-- Привязка почты: второй способ входа в браузерную версию того же
+             аккаунта. Привязать можно только отсюда, из уже авторизованного
+             кабинета — см. /api/email/bind/* в webapp/api.py. -->
+        <div class="section-title">Почта для входа</div>
+        <div class="card" id="email-card">
+          <div class="email-hint" id="email-hint">
+            Привяжите почту, чтобы входить в личный кабинет в браузере без Telegram.
+          </div>
+
+          <!-- Состояние 1: почта уже привязана -->
+          <div class="email-bound hidden" id="email-bound">
+            <div class="account-row">
+              <span class="account-row-label">Почта</span>
+              <span class="account-row-value" id="email-bound-value">—</span>
+            </div>
+            <button class="btn secondary btn-standalone" id="email-unbind-btn">Отвязать</button>
+          </div>
+
+          <!-- Состояние 2: ввод адреса -->
+          <div class="email-form" id="email-bind-form">
+            <input
+              class="input"
+              id="email-bind-input"
+              type="email"
+              inputmode="email"
+              autocomplete="email"
+              placeholder="you@example.com"
+            />
+            <button class="btn btn-standalone" id="email-bind-send">Выслать код</button>
+          </div>
+
+          <!-- Состояние 3: ввод кода из письма -->
+          <div class="email-form hidden" id="email-code-form">
+            <div class="email-hint" id="email-code-hint">Код отправлен на почту</div>
+            <input
+              class="input"
+              id="email-code-input"
+              type="text"
+              inputmode="numeric"
+              autocomplete="one-time-code"
+              maxlength="6"
+              placeholder="000000"
+            />
+            <button class="btn btn-standalone" id="email-code-confirm">Подтвердить</button>
+            <button class="btn secondary btn-standalone" id="email-code-cancel">Отмена</button>
+          </div>
+        </div>
+
         <div class="section-title">Поддержка</div>
         <div class="card" id="support-card">
           <div class="about-support" id="about-support"></div>
@@ -278,6 +326,6 @@
   </div>
 
   <script src="config.js?v=3"></script>
-  <script src="app.js?v=5"></script>
+  <script src="app.js?v=6"></script>
 </body>
 </html>
