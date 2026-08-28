@@ -66,21 +66,23 @@
   }
 
   function showBrowserLoginScreen() {
-    // Два равноправных способа войти в ОДИН И ТОТ ЖЕ аккаунт: ссылка из бота
-    // и код на привязанную почту. Оба заканчиваются браузерной сессией с тем
-    // же tg_id, поэтому «синхронизировать» после входа нечего — данные и так
-    // одни (см. webapp/api.py, раздел «вход по почте»).
+    // Почта — самостоятельный способ входа И регистрации: незнакомый адрес на
+    // шаге подтверждения кода создаёт новый аккаунт (tg_id = None), знакомый —
+    // входит в существующий. Ссылка из бота — второй способ, для тех, кто
+    // начал с Telegram. Оба заканчиваются браузерной сессией одного аккаунта
+    // (см. webapp/api.py, раздел «вход/регистрация по почте»).
     const tgBlock = BOT_USERNAME
       ? '<a class="btn btn-standalone" href="https://t.me/' +
         BOT_USERNAME +
         '?start=weblogin" target="_blank" rel="noopener">Войти через Telegram</a>' +
-        '<div class="email-hint" style="margin-top:14px">или войдите по почте, если привязали её в кабинете</div>'
-      : '<div class="email-hint">Войдите по почте, привязанной в личном кабинете.</div>';
+        '<div class="email-hint" style="margin-top:14px">или по почте — ниже</div>'
+      : "";
 
     els.loading.innerHTML =
       '<div class="login-box">' +
       tgBlock +
       '<div class="email-form" id="login-email-form">' +
+      '<div class="email-hint">Вход или регистрация по почте — на неё придёт код.</div>' +
       '<input id="login-email-input" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com" />' +
       '<button class="btn secondary btn-standalone" id="login-email-send">Получить код</button>' +
       "</div>" +
@@ -139,10 +141,7 @@
         if (!resp.ok) throw new Error((data && data.error) || "Не удалось отправить код");
 
         pendingEmail = email;
-        // Сервер намеренно отвечает "ok" и для незарегистрированной почты,
-        // чтобы по нему нельзя было проверять, есть ли такой клиент. Поэтому
-        // и текст здесь обтекаемый — «если привязана», а не «код отправлен».
-        hintEl.textContent = "Если эта почта привязана к аккаунту, код уже отправлен на " + email;
+        hintEl.textContent = "Код отправлен на " + email;
         emailForm.classList.add("hidden");
         codeForm.classList.remove("hidden");
         codeInput.focus();
@@ -364,6 +363,9 @@
 
     accountTgId: document.getElementById("account-tg-id"),
     accountUsername: document.getElementById("account-username"),
+    tgLinkTitle: document.getElementById("tg-link-title"),
+    tgLinkCard: document.getElementById("tg-link-card"),
+    tgLinkBtn: document.getElementById("tg-link-btn"),
     emailHint: document.getElementById("email-hint"),
     emailBound: document.getElementById("email-bound"),
     emailBoundValue: document.getElementById("email-bound-value"),
@@ -686,7 +688,53 @@
   function renderAccount(profile) {
     els.accountTgId.textContent = profile.tg_id != null ? String(profile.tg_id) : "—";
     els.accountUsername.textContent = profile.username ? "@" + profile.username : "—";
-    renderEmailSection(profile.email || null);
+    renderEmailSection(profile.email || null, profile.telegram_linked !== false);
+    renderTelegramLink(profile);
+  }
+
+  // ---------- привязка Telegram к почтовому аккаунту ----------
+  // Блок виден только у аккаунтов без Telegram (регистрация по почте) и только
+  // в обычном браузере (внутри Mini App Telegram и так есть). Кнопка получает
+  // одноразовую ссылку t.me/<bot>?start=linktg_<token>, открывает её, дальше
+  // бот проставляет tg_id — а мы это замечаем поллингом /api/me.
+  let tgLinkPollTimer = null;
+
+  function renderTelegramLink(profile) {
+    const canLink = !initData && profile.telegram_linked === false;
+    els.tgLinkTitle.classList.toggle("hidden", !canLink);
+    els.tgLinkCard.classList.toggle("hidden", !canLink);
+    if (!canLink && tgLinkPollTimer) {
+      clearInterval(tgLinkPollTimer);
+      tgLinkPollTimer = null;
+    }
+  }
+
+  async function startTelegramLink() {
+    els.tgLinkBtn.disabled = true;
+    els.tgLinkBtn.textContent = "Готовим ссылку…";
+    try {
+      const data = await api("/api/link/telegram/start", { method: "POST" });
+      window.open(data.deep_link, "_blank", "noopener");
+      els.tgLinkBtn.textContent = "Ждём подтверждения в боте…";
+      if (tgLinkPollTimer) clearInterval(tgLinkPollTimer);
+      tgLinkPollTimer = setInterval(async () => {
+        try {
+          const me = await api("/api/me");
+          if (me.telegram_linked) {
+            clearInterval(tgLinkPollTimer);
+            tgLinkPollTimer = null;
+            showToast("Telegram привязан", false);
+            renderProfile(me);
+          }
+        } catch (e) {
+          /* сеть/сессия — просто ждём следующего тика */
+        }
+      }, 3000);
+    } catch (e) {
+      showToast(e.message, true);
+      els.tgLinkBtn.disabled = false;
+      els.tgLinkBtn.textContent = "Привязать Telegram";
+    }
   }
 
   // ---------- привязка почты ----------
@@ -698,10 +746,13 @@
   // поле ввода к этому моменту уже скрыто, а сервер сверяет код именно с ним.
   let pendingBindEmail = "";
 
-  function renderEmailSection(email) {
+  function renderEmailSection(email, canUnbind) {
     const bound = !!email;
     els.emailBound.classList.toggle("hidden", !bound);
     els.emailBoundValue.textContent = email || "—";
+    // У почтового аккаунта без Telegram почта — единственный вход, отвязать её
+    // нельзя (сервер вернёт 409). Прячем кнопку, чтобы не путать.
+    els.emailUnbindBtn.classList.toggle("hidden", !canUnbind);
     els.emailHint.textContent = bound
       ? "По этой почте можно войти в кабинет в браузере без Telegram."
       : "Привяжите почту, чтобы входить в личный кабинет в браузере без Telegram.";
@@ -779,6 +830,7 @@
   els.emailBindSend.onclick = requestBindCode;
   els.emailCodeConfirm.onclick = confirmBindCode;
   els.emailUnbindBtn.onclick = unbindEmail;
+  els.tgLinkBtn.onclick = startTelegramLink;
   els.emailCodeCancel.onclick = () => {
     els.emailCodeForm.classList.add("hidden");
     els.emailBindForm.classList.remove("hidden");

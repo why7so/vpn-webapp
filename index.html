@@ -176,6 +176,18 @@
           </div>
         </div>
 
+        <!-- Привязка Telegram: для аккаунтов, зарегистрированных по почте.
+             Блок скрыт, если Telegram уже привязан. См.
+             /api/link/telegram/start в webapp/api.py. -->
+        <div class="section-title hidden" id="tg-link-title">Telegram</div>
+        <div class="card hidden" id="tg-link-card">
+          <div class="email-hint">
+            Привяжите Telegram, чтобы пользоваться ботом и получать уведомления —
+            подписка, баланс и устройства останутся те же.
+          </div>
+          <button class="btn btn-standalone" id="tg-link-btn">Привязать Telegram</button>
+        </div>
+
         <!-- Привязка почты: второй способ входа в браузерную версию того же
              аккаунта. Привязать можно только отсюда, из уже авторизованного
              кабинета — см. /api/email/bind/* в webapp/api.py. -->
