@@ -68,7 +68,7 @@
   // Вход/регистрация вынесены на отдельную страницу login.html
   // (оформление в стиле карточки Anthropic: почта + Telegram).
   function goToLoginPage() {
-    window.location.replace("login.html" + window.location.search);
+    window.location.replace("login" + window.location.search);
   }
   // ---------- popup с результатом активации промокода ----------
   // Кнопка "Активировать" промокода (в боте) ведёт сюда с параметром

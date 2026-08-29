@@ -186,12 +186,12 @@
 
     <div class="auth-foot">
       Продолжая, вы принимаете
-      <a href="terms.html">условия</a> и
-      <a href="privacy.html">политику конфиденциальности</a>.
+      <a href="terms">условия</a> и
+      <a href="privacy">политику конфиденциальности</a>.
     </div>
   </div>
 
-  <script src="config.js?v=3"></script>
+  <script src="config.js?v=4"></script>
   <script>
     (function () {
       "use strict";
@@ -206,7 +206,7 @@
       var hasSession = false;
       try { hasSession = !!localStorage.getItem(SESSION_KEY); } catch (e) {}
       if (hasSession || (tg && tg.initData) || new URLSearchParams(location.search).get("login_token")) {
-        location.replace("index.html" + location.search);
+        location.replace("/" + location.search);
         return;
       }
 
@@ -280,7 +280,7 @@
         try {
           var data = await postJson("/api/email/login/confirm", { email: pendingEmail, code: code });
           try { localStorage.setItem(SESSION_KEY, data.session_token); } catch (e) {}
-          location.replace("index.html");
+          location.replace("/");
         } catch (e) {
           els.err2.textContent = e.message;
           setBusy(els.btnCode, false, "", "Войти");
