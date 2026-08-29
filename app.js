@@ -571,37 +571,80 @@
     const canLink = !initData && profile.telegram_linked === false;
     els.tgLinkTitle.classList.toggle("hidden", !canLink);
     els.tgLinkCard.classList.toggle("hidden", !canLink);
-    if (!canLink && tgLinkPollTimer) {
-      clearInterval(tgLinkPollTimer);
-      tgLinkPollTimer = null;
-    }
+    if (!canLink) stopTelegramLinkPoll();
+  }
+
+  // Сколько ждём подтверждения в боте, прежде чем прекратить поллинг. Токен
+  // привязки живёт 15 минут (TELEGRAM_LINK_TOKEN_TTL_SECONDS), дольше опрашивать
+  // бессмысленно — иначе брошенная вкладка вечно дёргает /api/me.
+  const TG_LINK_POLL_MS = 3000;
+  const TG_LINK_POLL_LIMIT = (15 * 60 * 1000) / TG_LINK_POLL_MS;
+
+  function stopTelegramLinkPoll() {
+    if (tgLinkPollTimer) clearInterval(tgLinkPollTimer);
+    tgLinkPollTimer = null;
+  }
+
+  function resetTelegramLinkBtn() {
+    els.tgLinkBtn.disabled = false;
+    els.tgLinkBtn.textContent = "Привязать Telegram";
   }
 
   async function startTelegramLink() {
     els.tgLinkBtn.disabled = true;
     els.tgLinkBtn.textContent = "Готовим ссылку…";
+
+    // Окно открываем СРАЗУ по клику, до запроса за ссылкой: после await
+    // браузер считает window.open программным и блокирует его (заметнее всего
+    // в Safari на iOS). Пустую вкладку потом переводим на нужный адрес, а если
+    // её всё же заблокировали — показываем ссылку отдельной строкой.
+    //
+    // Без "noopener" намеренно: с ним window.open по спецификации возвращает
+    // null, и ссылку было бы некуда подставить. Вместо этого рвём связь
+    // вручную сразу после перехода.
+    const popup = window.open("", "_blank");
     try {
       const data = await api("/api/link/telegram/start", { method: "POST" });
-      window.open(data.deep_link, "_blank", "noopener");
+      if (popup && !popup.closed) {
+        popup.location = data.deep_link;
+        try {
+          popup.opener = null;
+        } catch (e) {
+          /* некоторые браузеры не дают трогать opener — не критично */
+        }
+      } else {
+        els.tgLinkCard.insertAdjacentHTML(
+          "beforeend",
+          '<div class="email-hint" style="margin-top:10px">Всплывающее окно заблокировано — ' +
+            '<a href="' + data.deep_link + '" target="_blank" rel="noopener">откройте бота вручную</a>.</div>'
+        );
+      }
       els.tgLinkBtn.textContent = "Ждём подтверждения в боте…";
-      if (tgLinkPollTimer) clearInterval(tgLinkPollTimer);
+      stopTelegramLinkPoll();
+      let ticks = 0;
       tgLinkPollTimer = setInterval(async () => {
+        if (++ticks > TG_LINK_POLL_LIMIT) {
+          stopTelegramLinkPoll();
+          resetTelegramLinkBtn();
+          return;
+        }
         try {
           const me = await api("/api/me");
           if (me.telegram_linked) {
-            clearInterval(tgLinkPollTimer);
-            tgLinkPollTimer = null;
+            stopTelegramLinkPoll();
             showToast("Telegram привязан", false);
             renderProfile(me);
           }
         } catch (e) {
           /* сеть/сессия — просто ждём следующего тика */
         }
-      }, 3000);
+      }, TG_LINK_POLL_MS);
     } catch (e) {
+      // Ссылку получить не удалось — закрываем заранее открытую пустую вкладку,
+      // иначе она так и повиснет с about:blank.
+      if (popup && !popup.closed) popup.close();
       showToast(e.message, true);
-      els.tgLinkBtn.disabled = false;
-      els.tgLinkBtn.textContent = "Привязать Telegram";
+      resetTelegramLinkBtn();
     }
   }
 
