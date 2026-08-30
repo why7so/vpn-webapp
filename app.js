@@ -810,7 +810,7 @@
 
   // ---------- модалка выбора тарифа: план -> ось доп. устройств -> способ оплаты ----------
 
-  let planModalState = null; // { plan, deviceValues, selectedQty }
+  let planModalState = null; // { plan, deviceValues, selectedQty, currentLimit }
 
   function deviceWordLocal(qty) {
     const mod10 = qty % 10;
@@ -821,14 +821,14 @@
   }
 
   function planModalTotals() {
-    const { plan, selectedQty, baseLimit } = planModalState;
+    const { plan, selectedQty, currentLimit } = planModalState;
     const discount = cachedProfile ? cachedProfile.discount_percent : 0;
     const factor = discount > 0 ? Math.max(0, 1 - discount / 100) : 1;
     const planPriceRub = Math.round(plan.price_rub * factor);
     const planPriceUsdt = Math.round(plan.price_usdt * factor * 100) / 100;
-    // n — выбранное на оси общее количество устройств, докупается (n - baseLimit) штук.
-    // Цена доп. устройств считается по формуле (n - baseLimit) * price_за_устройство.
-    const extraQty = Math.max(0, selectedQty - (baseLimit || 0));
+    // selectedQty — сколько устройств ДОКУПАЕТСЯ (на оси при этом написан
+    // итоговый лимит currentLimit + selectedQty). Платят за докупку.
+    const extraQty = Math.max(0, selectedQty);
     const devicePriceRub = cachedDevices ? Math.round(cachedDevices.price_rub * extraQty) : 0;
     const devicePriceUsdt = cachedDevices ? Math.round(cachedDevices.price_usdt * extraQty * 100) / 100 : 0;
     return {
@@ -836,12 +836,15 @@
       priceRub: planPriceRub + devicePriceRub,
       priceUsdt: Math.round((planPriceUsdt + devicePriceUsdt) * 100) / 100,
       extraQty: extraQty,
+      totalDevices: currentLimit + extraQty,
     };
   }
 
   // Рисует ось: линия + точки-остановки на значениях values, активная точка — selected.
-  // onChange(value) вызывается при клике по точке.
-  function renderDeviceTrack(container, values, selected, onChange) {
+  // onChange(value) вызывается при клике по точке. labelFor(value) — что писать
+  // в точке: на обеих осях выбирается количество ДОКУПАЕМЫХ устройств, а
+  // подписаны точки итоговым лимитом, поэтому подпись и значение расходятся.
+  function renderDeviceTrack(container, values, selected, onChange, labelFor) {
     container.innerHTML = "";
     const line = document.createElement("div");
     line.className = "device-track-line";
@@ -860,7 +863,7 @@
       const dot = document.createElement("div");
       dot.className = "device-dot" + (val === selected ? " active" : "");
       dot.style.left = pct + "%";
-      dot.textContent = String(val);
+      dot.textContent = labelFor ? labelFor(val) : String(val);
       dot.onclick = () => onChange(val);
       container.appendChild(dot);
     });
@@ -881,13 +884,19 @@
 
     els.planModalDevicesQty.textContent =
       totals.extraQty === 0
-        ? "без доп. устройств"
-        : "+" + totals.extraQty + " " + deviceWordLocal(totals.extraQty);
+        ? "сейчас " + planModalState.currentLimit
+        : "+" + totals.extraQty + " " + deviceWordLocal(totals.extraQty) + " → всего " + totals.totalDevices;
 
-    renderDeviceTrack(els.planModalDots, deviceValues, selectedQty, (val) => {
-      planModalState.selectedQty = val;
-      renderPlanModalSelectView();
-    });
+    renderDeviceTrack(
+      els.planModalDots,
+      deviceValues,
+      selectedQty,
+      (val) => {
+        planModalState.selectedQty = val;
+        renderPlanModalSelectView();
+      },
+      (val) => String(planModalState.currentLimit + val)
+    );
   }
 
   function renderPlanModalMethods() {
@@ -917,11 +926,14 @@
   }
 
   function openPlanModal(plan) {
-    // Базовый лимит устройств (уже включён в тариф, докупка не нужна) — приходит с бэкенда,
-    // по умолчанию 3. Ось показывает общее количество устройств (n), а не докупаемое сверху.
-    const baseLimit = cachedDevices && cachedDevices.base_device_limit != null ? cachedDevices.base_device_limit : 3;
-    const deviceValues = [baseLimit].concat(cachedDevices ? cachedDevices.qty_presets : []);
-    planModalState = { plan: plan, deviceValues: deviceValues, selectedQty: baseLimit, baseLimit: baseLimit };
+    // Ось показывает ИТОГОВОЕ количество устройств, а выбирается и оплачивается
+    // докупка сверх текущего лимита (нулевая точка = ничего не докупать).
+    // Привязка к текущему лимиту, а не к базовым трём: тому, кто уже докупал,
+    // шкала «3 4 6 8 10» показывала бы неправду.
+    const currentLimit =
+      cachedDevices && cachedDevices.device_limit != null ? cachedDevices.device_limit : 3;
+    const deviceValues = [0].concat(cachedDevices ? cachedDevices.extra_presets || [] : []);
+    planModalState = { plan: plan, deviceValues: deviceValues, selectedQty: 0, currentLimit: currentLimit };
     els.planModalSelectView.classList.remove("hidden");
     els.planModalMethodView.classList.add("hidden");
     renderPlanModalSelectView();
@@ -1067,20 +1079,42 @@
   }
 
   // Ось "Докупить устройства": та же точечная шкала, что и в модалке тарифа
-  // (renderDeviceTrack). Первая точка — 0 (без доп. устройств), дальше —
-  // qty_presets с бэкенда. Способы оплаты показываются под шкалой и
-  // пересчитываются на выбранное количество; при 0 блок оплаты скрыт.
+  // (renderDeviceTrack). На точках написан ИТОГОВЫЙ лимит устройств, а
+  // выбирается и оплачивается разница с текущим — extra_presets с бэкенда.
+  // Первая точка — то, что у пользователя уже есть (покупки нет), поэтому
+  // шкала привязана к его текущему лимиту, а не к базовым трём: тому, кто
+  // уже докупал, «3 4 6 8 10» показывало бы неправду.
   function renderDeviceButtons(devices) {
-    const values = [0].concat(devices.qty_presets || []);
+    const currentLimit = devices.device_limit;
+
+    // Лимит 0 = без ограничений: докупать нечего, и подписи вида "0, 1, 3"
+    // были бы бессмыслицей.
+    if (currentLimit <= 0) {
+      els.devicesTrack.innerHTML = "";
+      els.devicesQtyLabel.textContent = "без ограничений";
+      els.devicesPayMethods.classList.add("hidden");
+      els.devicesPayMethods.innerHTML = "";
+      return;
+    }
+
+    const values = [0].concat(devices.extra_presets || []);
     if (values.indexOf(selectedDeviceQty) === -1) selectedDeviceQty = 0;
 
-    renderDeviceTrack(els.devicesTrack, values, selectedDeviceQty, (val) => {
-      selectedDeviceQty = val;
-      renderDeviceButtons(cachedDevices);
-    });
+    renderDeviceTrack(
+      els.devicesTrack,
+      values,
+      selectedDeviceQty,
+      (val) => {
+        selectedDeviceQty = val;
+        renderDeviceButtons(cachedDevices);
+      },
+      (val) => String(currentLimit + val)
+    );
 
     els.devicesQtyLabel.textContent =
-      selectedDeviceQty === 0 ? "без доп. устройств" : "+" + selectedDeviceQty + " " + deviceWord(selectedDeviceQty);
+      selectedDeviceQty === 0
+        ? "сейчас " + currentLimit
+        : "+" + selectedDeviceQty + " " + deviceWord(selectedDeviceQty) + " → всего " + (currentLimit + selectedDeviceQty);
 
     if (selectedDeviceQty === 0) {
       els.devicesPayMethods.classList.add("hidden");
