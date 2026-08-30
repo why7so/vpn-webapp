@@ -414,64 +414,6 @@ body {
   opacity: 0.85;
 }
 
-/* ---------- auto-renew strip ---------- */
-
-.autorenew-card {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
-}
-
-.autorenew-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--text-dim);
-  flex-shrink: 0;
-}
-
-.autorenew-dot.on {
-  background: var(--accent);
-}
-
-.autorenew-dot.off {
-  background: var(--text-dim);
-}
-
-.autorenew-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.autorenew-title {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.autorenew-sub {
-  font-size: 12px;
-  color: var(--text-dim);
-  margin-top: 1px;
-}
-
-.autorenew-toggle-btn {
-  border: none;
-  border-radius: 999px;
-  padding: 7px 14px;
-  font-size: 12px;
-  font-weight: 700;
-  background: var(--surface-2);
-  color: var(--text);
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.autorenew-toggle-btn.is-on {
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-
 /* ---------- subscription url ---------- */
 
 .sub-url {
@@ -1141,10 +1083,6 @@ input:focus {
 
   .chip.active:hover {
     filter: brightness(1.08);
-  }
-
-  .autorenew-toggle-btn:hover {
-    filter: brightness(1.1);
   }
 
   .nav-item:not(.active):hover {

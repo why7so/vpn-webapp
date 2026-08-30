@@ -170,11 +170,6 @@
     subPlanDate: document.getElementById("sub-plan-date"),
     manageBtn: document.getElementById("manage-btn"),
 
-    autorenewCard: document.getElementById("autorenew-card"),
-    autorenewDot: document.getElementById("autorenew-dot"),
-    autorenewSub: document.getElementById("autorenew-sub"),
-    autorenewToggleBtn: document.getElementById("autorenew-toggle-btn"),
-
     subUrlBlock: document.getElementById("sub-url-block"),
     subUrl: document.getElementById("sub-url"),
     copySubUrl: document.getElementById("copy-sub-url"),
@@ -539,7 +534,6 @@
       els.connectNoSub.classList.remove("hidden");
     }
 
-    renderAutoRenew(profile);
     renderAbout(profile);
     renderAccount(profile);
     renderConnectDevice();
@@ -753,44 +747,6 @@
   els.emailCodeInput.onkeydown = (e) => {
     if (e.key === "Enter") confirmBindCode();
   };
-
-  // Бэкенд в этой версии API не отдаёт поле автопродления явно.
-  // Блок рассчитан на необязательное поле profile.auto_renew (true/false).
-  // Пока бэкенд его не присылает — показываем нейтральный статус без переключателя,
-  // чтобы не врать пользователю. Как только API станет отдавать auto_renew
-  // (и появится эндпоинт POST /api/auto-renew), кнопка-переключатель включится сама.
-  function renderAutoRenew(profile) {
-    const hasField = typeof profile.auto_renew === "boolean";
-    const sub = profile.subscription;
-    const hasActiveSub = !!(sub && sub.active);
-
-    if (!hasField) {
-      els.autorenewDot.className = "autorenew-dot";
-      els.autorenewSub.textContent = hasActiveSub
-        ? "Продлевайте вручную на странице тарифов"
-        : "Появится после активации тарифа";
-      els.autorenewToggleBtn.classList.add("hidden");
-      return;
-    }
-
-    const on = profile.auto_renew === true;
-    els.autorenewDot.className = "autorenew-dot " + (on ? "on" : "off");
-    els.autorenewSub.textContent = on ? "Включено — спишем с баланса автоматически" : "Выключено — продлевайте вручную";
-    els.autorenewToggleBtn.textContent = on ? "Выключить" : "Включить";
-    els.autorenewToggleBtn.className = "autorenew-toggle-btn" + (on ? " is-on" : "");
-    els.autorenewToggleBtn.classList.remove("hidden");
-    els.autorenewToggleBtn.onclick = () => toggleAutoRenew(!on);
-  }
-
-  async function toggleAutoRenew(nextValue) {
-    try {
-      await api("/api/auto-renew", { method: "POST", body: JSON.stringify({ enabled: nextValue }) });
-      showToast(nextValue ? "Автопродление включено" : "Автопродление выключено");
-      await refreshProfile();
-    } catch (e) {
-      showToast(e.message, true);
-    }
-  }
 
   // Подписи способов оплаты — используются и на кнопках выбора, и в модалке подтверждения
   const PAY_METHOD_LABELS = {
