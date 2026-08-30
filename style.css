@@ -265,14 +265,6 @@ body {
   flex-shrink: 0;
 }
 
-.discount-chip {
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-size: 12px;
-  font-weight: 800;
-  padding: 5px 10px;
-  border-radius: 999px;
-}
 
 /* ---------- generic card ---------- */
 
@@ -321,6 +313,16 @@ body {
   font-weight: 800;
   letter-spacing: -0.02em;
   font-variant-numeric: tabular-nums;
+}
+
+/* Подпись под значением в мини-карточке: сейчас — тариф, к которому
+   привязана скидка. Отдельной строкой, а не внутри .mini-value: там
+   22px bold, и название тарифа вылезло бы за карточку. */
+.mini-hint {
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--text-dim);
+  margin-top: -2px;
 }
 
 .mini-btn {
@@ -551,9 +553,8 @@ body {
   position: relative;
 }
 
-/* Бейдж скидки в правом верхнем углу плашки. Тот же вид, что у шильдика
-   в шапке (.discount-chip), — это одна и та же сущность, и выглядеть она
-   должна одинаково в обоих местах. */
+/* Бейдж скидки в правом верхнем углу плашки — единственное место,
+   где показывается размер скидки: в шапке её больше нет. */
 .plan-discount {
   position: absolute;
   top: 12px;

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=9" />
+  <link rel="stylesheet" href="style.css?v=10" />
 </head>
 <body>
   <div id="app">
@@ -34,7 +34,6 @@
           </svg>
           <span id="brand-name">Jay Connect</span>
         </div>
-        <div class="discount-chip hidden" id="discount-chip"></div>
       </header>
 
       <!-- ===== Страница 1: Главная ===== -->
@@ -49,6 +48,7 @@
             <div class="card mini-card">
               <div class="mini-label">Скидка</div>
               <div class="mini-value" id="discount">—</div>
+              <div class="mini-hint hidden" id="discount-scope"></div>
               <button class="mini-btn ghost" id="promo-shortcut">Промокод</button>
             </div>
           </div>
@@ -334,6 +334,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=9"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

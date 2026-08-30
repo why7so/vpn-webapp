@@ -157,10 +157,10 @@
     loading: document.getElementById("loading"),
     main: document.getElementById("screen-main"),
 
-    discountChip: document.getElementById("discount-chip"),
 
     balance: document.getElementById("balance"),
     discount: document.getElementById("discount"),
+    discountScope: document.getElementById("discount-scope"),
     topupShortcut: document.getElementById("topup-shortcut"),
     promoShortcut: document.getElementById("promo-shortcut"),
 
@@ -502,11 +502,15 @@
     els.balance.textContent = Math.round(profile.balance) + " ₽";
     els.discount.textContent = profile.discount_percent > 0 ? profile.discount_percent + "%" : "нет";
 
-    if (profile.discount_percent > 0) {
-      els.discountChip.textContent = "-" + profile.discount_percent + "%";
-      els.discountChip.classList.remove("hidden");
+    // Скидка может действовать только на один тариф — тогда так и пишем.
+    // Без этой строки «Скидка 80%» на главной обещала бы больше, чем есть.
+    const scopePlan = profile.discount_percent > 0 ? profile.discount_plan_code : null;
+    if (scopePlan) {
+      const plan = cachedPlans.filter((p) => p.code === scopePlan)[0];
+      els.discountScope.textContent = "только «" + (plan ? plan.title : scopePlan) + "»";
+      els.discountScope.classList.remove("hidden");
     } else {
-      els.discountChip.classList.add("hidden");
+      els.discountScope.classList.add("hidden");
     }
 
     const sub = profile.subscription;
@@ -822,7 +826,10 @@
 
   function planModalTotals() {
     const { plan, selectedQty, currentLimit } = planModalState;
-    const discount = cachedProfile ? cachedProfile.discount_percent : 0;
+    // Именно discountForPlan, а не сырой процент из профиля: скидка может быть
+    // привязана к другому тарифу, и тогда в модалке нельзя показывать цену со
+    // скидкой — бэкенд посчитает полную.
+    const discount = discountForPlan(plan);
     const factor = discount > 0 ? Math.max(0, 1 - discount / 100) : 1;
     const planPriceRub = Math.round(plan.price_rub * factor);
     const planPriceUsdt = Math.round(plan.price_usdt * factor * 100) / 100;
@@ -962,12 +969,23 @@
     renderPlanModalSelectView();
   };
 
+  // Скидка может быть привязана к одному тарифу (discount_plan_code с бэкенда).
+  // Тогда и бейдж, и пересчёт цены показываем только на его плашке — иначе
+  // человек увидел бы «-80%» на всех и посчитал бы, что переплатил.
+  function discountForPlan(plan) {
+    if (!cachedProfile || !(cachedProfile.discount_percent > 0)) return 0;
+    const boundTo = cachedProfile.discount_plan_code;
+    if (boundTo && boundTo !== plan.code) return 0;
+    return cachedProfile.discount_percent;
+  }
+
   function renderPlans(plans) {
     cachedPlans = plans;
     els.plansList.innerHTML = "";
-    const discount = cachedProfile ? cachedProfile.discount_percent : 0;
 
     plans.forEach((plan) => {
+      const discount = discountForPlan(plan);
+
       const card = document.createElement("div");
       card.className = "plan-card" + (discount > 0 ? " has-discount" : "");
       card.onclick = () => openPlanModal(plan);
@@ -1449,6 +1467,10 @@
         api("/api/plans"),
         api("/api/devices"),
       ]);
+      // Порядок важен: подпись «только «12 месяцев»» под скидкой берёт
+      // название тарифа из cachedPlans, поэтому планы кладём в кэш до
+      // отрисовки профиля — иначе в подписи окажется код вместо названия.
+      cachedPlans = plansData.plans;
       renderProfile(profile);
       renderPlans(plansData.plans);
       renderTopupPresets(plansData.topup_presets_rub);
