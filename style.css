@@ -547,6 +547,30 @@ body {
   flex-direction: column;
   gap: 10px;
   cursor: pointer;
+  /* Якорь для бейджа скидки в углу */
+  position: relative;
+}
+
+/* Бейдж скидки в правом верхнем углу плашки. Тот же вид, что у шильдика
+   в шапке (.discount-chip), — это одна и та же сущность, и выглядеть она
+   должна одинаково в обоих местах. */
+.plan-discount {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 5px 8px;
+  border-radius: 999px;
+}
+
+/* Освобождаем место под бейджем, чтобы длинное название тарифа не заезжало
+   под него. Только у карточек со скидкой — остальным отступ не нужен. */
+.plan-card.has-discount .plan-title {
+  padding-right: 56px;
 }
 
 .plan-title {

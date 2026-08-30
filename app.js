@@ -969,8 +969,15 @@
 
     plans.forEach((plan) => {
       const card = document.createElement("div");
-      card.className = "plan-card";
+      card.className = "plan-card" + (discount > 0 ? " has-discount" : "");
       card.onclick = () => openPlanModal(plan);
+
+      if (discount > 0) {
+        const badge = document.createElement("div");
+        badge.className = "plan-discount";
+        badge.textContent = "-" + discount + "%";
+        card.appendChild(badge);
+      }
 
       const title = document.createElement("div");
       title.className = "plan-title";
