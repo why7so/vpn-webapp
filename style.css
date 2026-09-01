@@ -370,7 +370,45 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 2px 6px;
+  /* Липкая: контент уезжает под неё, и стеклу есть что размывать. На
+     плоском фоне backdrop-filter не даёт ничего, кроме нагрузки, поэтому
+     раньше шапка стеклянной и не была. */
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  /* Компенсируем боковые отступы body, чтобы подложка шла от края до края:
+     иначе под шапкой оставались бы две непрозрачные полоски по 14px. */
+  margin: -14px -14px 0;
+  padding: 16px 16px 10px;
+  /* В покое прозрачная — стекло появляется, только когда под ней что-то
+     проехало. Постоянная подложка поверх пустого фона выглядела бы
+     случайной полосой. */
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition: background-color 0.25s ease, border-color 0.25s ease;
+}
+
+.topbar.is-stuck {
+  background: var(--glass-nav);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom-color: var(--line);
+}
+
+/* Без backdrop-filter полупрозрачная шапка превратилась бы в мутное пятно
+   поверх текста — возвращаем непрозрачную подложку. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .topbar.is-stuck {
+    background: var(--glass-nav-solid);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .topbar.is-stuck {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--glass-nav-solid);
+  }
 }
 
 .brand {
@@ -1145,8 +1183,8 @@ input:focus {
   backdrop-filter: blur(26px) saturate(165%);
   -webkit-backdrop-filter: blur(26px) saturate(165%);
   border-top: 1px solid var(--glass-border);
-  border-radius: var(--r-md) var(--r-md) 0 0;
-  padding: 20px 18px max(20px, env(safe-area-inset-bottom));
+  border-radius: 22px 22px 0 0;
+  padding: 10px 18px max(20px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -1192,6 +1230,19 @@ input:focus {
   .modal-card {
     background: var(--surface);
   }
+}
+
+/* Ручка шторки — как в нативных sheet'ах: показывает, что панель пришла
+   снизу и закрывается вниз. Тянуть за неё нельзя, это подсказка формы, а
+   не орган управления, поэтому она aria-hidden и не ловит касания. */
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 3px;
+  background: var(--line-strong);
+  margin: 0 auto 14px;
+  flex-shrink: 0;
+  pointer-events: none;
 }
 
 .modal-title {

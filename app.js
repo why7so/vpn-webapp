@@ -211,6 +211,7 @@
     devicesEmpty: document.getElementById("devices-empty"),
     devicesNote: document.getElementById("devices-note"),
     navAdmin: document.getElementById("nav-admin"),
+    topbar: document.querySelector(".topbar"),
     themeToggle: document.getElementById("theme-toggle"),
     themeSeg: document.getElementById("theme-seg"),
     themeHint: document.getElementById("theme-hint"),
@@ -1764,6 +1765,20 @@
     renderAdminPromoForm();
   };
   els.adminPromoCreate.onclick = createPromo;
+
+  // ---------- стекло шапки при прокрутке ----------
+
+  // Подложка появляется, только когда под шапкой что-то проехало: поверх
+  // пустого фона размывать нечего, и постоянная полоса читалась бы как
+  // случайная. Порог в 4px, а не 0 — чтобы стекло не мигало от инерционного
+  // «подпрыгивания» страницы на iOS.
+  function syncTopbarGlass() {
+    if (!els.topbar) return;
+    els.topbar.classList.toggle("is-stuck", window.scrollY > 4);
+  }
+
+  window.addEventListener("scroll", syncTopbarGlass, { passive: true });
+  syncTopbarGlass();
 
   // ---------- тема оформления ----------
 
