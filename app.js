@@ -207,6 +207,9 @@
     devicesSummaryHint: document.getElementById("devices-summary-hint"),
     devicesEmpty: document.getElementById("devices-empty"),
     devicesNote: document.getElementById("devices-note"),
+    devicesOpenBtn: document.getElementById("devices-open-btn"),
+    devicesBack: document.getElementById("devices-back"),
+    devicesEntryHint: document.getElementById("devices-entry-hint"),
     navAdmin: document.getElementById("nav-admin"),
     topbar: document.querySelector(".topbar"),
     themeToggle: document.getElementById("theme-toggle"),
@@ -1187,11 +1190,21 @@
 
   function renderDevices(devices) {
     cachedDevices = devices;
-    // devices.message («максимум N устройств…») больше не показываем: то же
-    // самое говорит карточка-сводка над списком, и два текста об одном
-    // ограничении рядом только путали.
     renderDeviceButtons(devices);
-    renderDevicesPage(devices.devices || []);
+    renderDevicesEntry(devices);
+  }
+
+  // Подпись под заголовком блока-входа: сколько устройств и каков лимит.
+  // devices.message («максимум N устройств…») для этого не годится — он
+  // говорит только про лимит и не отвечает на «а сколько сейчас».
+  function renderDevicesEntry(devices) {
+    const list = devices.devices || [];
+    const active = list.filter((d) => !d.blocked).length;
+    const limit = devices.device_limit;
+    els.devicesEntryHint.textContent =
+      limit > 0
+        ? active + " " + deviceWord(active) + " из " + limit + " возможных одновременно."
+        : active + " " + deviceWord(active) + ". Ограничения по подключениям нет.";
   }
 
   async function purchaseDevices(qty, provider) {
@@ -1817,6 +1830,19 @@
   // нажал на солнце, потому что хочет тёмную сейчас, а не «когда система
   // решит». Обратно в системную после этого не вернуться — она остаётся
   // значением по умолчанию для тех, кто тему не трогал.
+  els.devicesOpenBtn.onclick = () => {
+    switchPage("devices");
+    showResetConfirm(false);
+    refreshDevicesPage().catch((e) => showToast(e.message, true));
+  };
+  els.devicesBack.onclick = () => {
+    switchPage("connect-device");
+    // На управлении могли отключить устройство — подпись в блоке-входе
+    // должна показать новое число, а не то, с которым уходили. Через
+    // навбар это делает его обработчик, а сюда он не заходит.
+    if (cachedDevices) renderDevicesEntry(cachedDevices);
+  };
+
   els.themeToggle.onclick = () => {
     applyTheme(resolvedTheme() === "dark" ? "light" : "dark");
   };
@@ -1830,7 +1856,7 @@
 
   // ---------- страницы (нижняя навигация переключает их, без скролла по одной длинной странице) ----------
 
-  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card", "admin"];
+  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card", "devices", "admin"];
   const pageEls = {};
   PAGE_IDS.forEach((id) => {
     pageEls[id] = document.querySelector('.page[data-page="' + id + '"]');
@@ -1858,7 +1884,13 @@
     }
   }
 
+  // Подстраница без своей вкладки: пока мы на управлении устройствами,
+  // подсвеченной остаётся вкладка, из которой в него вошли, — иначе
+  // индикатор повисает между кнопками и активной не выглядит ни одна.
+  const NAV_PARENT = { devices: "connect-device" };
+
   function setActiveNav(targetId, skipAnim) {
+    targetId = NAV_PARENT[targetId] || targetId;
     if (targetId === currentNavTarget) return;
     currentNavTarget = targetId;
     els.navItems.forEach((btn) => {
@@ -2009,11 +2041,10 @@
       if (btn.dataset.target === "admin") {
         refreshAdmin().catch((e) => showToast(e.message, true));
       }
-      // Список мог устареть: устройство могло прийти за подпиской, пока
-      // человек ходил по другим вкладкам.
+      // Подпись в блоке-входе показывает живое число устройств: оно могло
+      // измениться, пока человек ходил по другим вкладкам.
       if (btn.dataset.target === "connect-device") {
-        showResetConfirm(false);
-        refreshDevicesPage().catch((e) => showToast(e.message, true));
+        refreshDevices().catch((e) => showToast(e.message, true));
       }
     };
   });
