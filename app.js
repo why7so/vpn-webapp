@@ -1330,8 +1330,7 @@
     els.devicesLimit.textContent = deviceWord(active);
 
     const limit = cachedDevices ? cachedDevices.device_limit : 0;
-    const blocked = devices.filter((d) => d.blocked && d.blocked_reason !== "limit").length;
-    const overLimit = devices.filter((d) => d.blocked_reason === "limit").length;
+    const blocked = devices.length - active;
     const hint = [];
     hint.push(
       limit > 0
@@ -1340,9 +1339,6 @@
     );
     if (blocked) {
       hint.push("Отключено: " + blocked + " — можно включить обратно.");
-    }
-    if (overLimit) {
-      hint.push("Сверх лимита: " + overLimit + " — ждёт свободного места.");
     }
     els.devicesSummaryHint.textContent = hint.join(" ");
 
@@ -1371,20 +1367,10 @@
       body.appendChild(meta);
 
       if (device.blocked) {
-        // Две разные причины и два разных выхода: отключённое вручную
-        // включается кнопкой, а сверх лимита — только когда освободится
-        // место. Одинаковая подпись «отключено» вводила бы в заблуждение.
-        const overLimit = device.blocked_reason === "limit";
         const badge = document.createElement("div");
         badge.className = "device-badge blocked";
-        badge.textContent = overLimit ? "сверх лимита" : "отключено";
+        badge.textContent = "отключено";
         body.appendChild(badge);
-        if (overLimit) {
-          const why = document.createElement("div");
-          why.className = "device-meta";
-          why.textContent = "Мест больше нет. Отключите другое или докупите — это включится само.";
-          body.appendChild(why);
-        }
       } else if (!device.identified_by_hwid) {
         // Клиент не прислал X-Hwid: строка опознана лишь по имени приложения,
         // и два устройства с ним склеятся в одно. Молчать об этом нельзя —
@@ -1434,15 +1420,11 @@
       };
       actions.appendChild(renameBtn);
 
-      // Устройству сверх лимита кнопку «Включить» не рисуем: нажать её всё
-      // равно нельзя, пока занято последнее место, и бэкенд ответит отказом.
-      if (device.blocked_reason !== "limit") {
-        const toggle = document.createElement("button");
-        toggle.className = "device-btn" + (device.blocked ? " accent" : " danger");
-        toggle.textContent = device.blocked ? "Включить" : "Отключить";
-        toggle.onclick = () => setDeviceBlocked(device.id, !device.blocked);
-        actions.appendChild(toggle);
-      }
+      const toggle = document.createElement("button");
+      toggle.className = "device-btn" + (device.blocked ? " accent" : " danger");
+      toggle.textContent = device.blocked ? "Включить" : "Отключить";
+      toggle.onclick = () => setDeviceBlocked(device.id, !device.blocked);
+      actions.appendChild(toggle);
 
       card.appendChild(actions);
       list.appendChild(card);
