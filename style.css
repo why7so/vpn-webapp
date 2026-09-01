@@ -423,40 +423,42 @@ body {
   color: var(--accent);
 }
 
-/* Показываем иконку ТЕКУЩЕЙ темы, а не будущей: кнопка отвечает на вопрос
-   «что сейчас», а не загадывает, что будет после нажатия. */
-:root[data-theme="dark"] .ic-sun,
-:root[data-theme="light"] .ic-moon {
+/* Иконка показывает, ЧТО БУДЕТ после нажатия: на светлой — луна, на тёмной
+   — солнце. Кнопка так читается как действие, а не как индикатор
+   состояния — состояние и без неё видно по всему экрану. */
+:root[data-theme="light"] .ic-sun,
+:root[data-theme="dark"] .ic-moon {
   opacity: 0;
   transform: rotate(-90deg) scale(0.4);
 }
 
-:root[data-theme="dark"] .ic-moon,
-:root[data-theme="light"] .ic-sun {
+:root[data-theme="light"] .ic-moon,
+:root[data-theme="dark"] .ic-sun {
   opacity: 1;
   transform: none;
 }
 
-/* Системная тема: иконку выбирает сама система. */
+/* Системная тема: что показать, решает сама система — по тому же правилу
+   «иконка = следующее состояние». */
 :root[data-theme="system"] .ic-sun {
-  opacity: 1;
-  transform: none;
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.4);
 }
 
 :root[data-theme="system"] .ic-moon {
-  opacity: 0;
-  transform: rotate(90deg) scale(0.4);
+  opacity: 1;
+  transform: none;
 }
 
 @media (prefers-color-scheme: dark) {
   :root[data-theme="system"] .ic-sun {
-    opacity: 0;
-    transform: rotate(-90deg) scale(0.4);
+    opacity: 1;
+    transform: none;
   }
 
   :root[data-theme="system"] .ic-moon {
-    opacity: 1;
-    transform: none;
+    opacity: 0;
+    transform: rotate(90deg) scale(0.4);
   }
 }
 
