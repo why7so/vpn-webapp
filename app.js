@@ -98,7 +98,7 @@
 
   function showPromoPopupIfAny() {
     if (!promoPopupText) return;
-    showTgPopup("🎁 Промокод", promoPopupText);
+    showTgPopup("Промокод", promoPopupText);
   }
 
   // ---------- автоактивация промокода при открытии по прямой ссылке ----------
@@ -145,11 +145,11 @@
     try {
       const result = await api("/api/promo", { method: "POST", body: JSON.stringify({ code: code }) });
       await refreshProfile();
-      showTgPopup("🎁 Промокод", shortenForPopup(result.message));
+      showTgPopup("Промокод", shortenForPopup(result.message));
     } catch (e) {
       const alreadyUsed = typeof e.message === "string" && e.message.indexOf("уже использовали") !== -1;
       if (alreadyUsed) return; // повторное открытие той же ссылки — молча ничего не делаем
-      showTgPopup("Промокод", "❌ " + e.message);
+      showTgPopup("Промокод", e.message);
     }
   }
 
@@ -764,10 +764,10 @@
 
   // Подписи способов оплаты — используются и на кнопках выбора, и в модалке подтверждения
   const PAY_METHOD_LABELS = {
-    free: "🎁 Бесплатно (по скидке)",
-    balance: "💰 С баланса",
-    cryptobot: "💎 Крипта (CryptoBot)",
-    platega: "💳 СБП (Platega)",
+    free: "Бесплатно (по скидке)",
+    balance: "С баланса",
+    cryptobot: "Крипта (CryptoBot)",
+    platega: "СБП (Platega)",
   };
 
   // ---------- экран подтверждения перед оплатой: товар — цена — кнопка «Оплатить» ----------
@@ -932,13 +932,13 @@
 
     els.planModalMethods.innerHTML = "";
     if (isFree) {
-      els.planModalMethods.appendChild(makeBtn("🎁 Бесплатно", () => goConfirm("free")));
+      els.planModalMethods.appendChild(makeBtn("Бесплатно", () => goConfirm("free")));
     } else {
       if (balanceEnough) {
-        els.planModalMethods.appendChild(makeBtn("💰 С баланса", () => goConfirm("balance")));
+        els.planModalMethods.appendChild(makeBtn("С баланса", () => goConfirm("balance")));
       }
-      els.planModalMethods.appendChild(makeBtn("💎 Крипта", () => goConfirm("cryptobot"), "secondary"));
-      els.planModalMethods.appendChild(makeBtn("💳 СБП", () => goConfirm("platega"), "secondary"));
+      els.planModalMethods.appendChild(makeBtn("Крипта", () => goConfirm("cryptobot"), "secondary"));
+      els.planModalMethods.appendChild(makeBtn("СБП", () => goConfirm("platega"), "secondary"));
     }
   }
 
@@ -1061,7 +1061,7 @@
         body: JSON.stringify({ plan_code: planCode, provider: provider, extra_devices_qty: extraQty }),
       });
       if (result.status === "granted") {
-        showToast("✅ Доступ выдан!" + devicesNote);
+        showToast("Доступ выдан!" + devicesNote);
         await refreshProfile();
         if (extraQty) await refreshDevices();
         return;
@@ -1069,7 +1069,7 @@
       // status === "invoice"
       if (tg) tg.openLink(result.pay_url);
       pollInvoice(result.invoice_id, async () => {
-        showToast("✅ Оплата подтверждена, доступ выдан!" + devicesNote);
+        showToast("Оплата подтверждена, доступ выдан!" + devicesNote);
         await refreshProfile();
         if (extraQty) await refreshDevices();
       });
@@ -1105,23 +1105,23 @@
     // столько-то». Кнопка с суммой отвечает на оба вопроса сразу и ведёт к пополнению.
     if (balanceEnough) {
       wrap.appendChild(
-        makeBtn("💰 С баланса", () => openDeviceConfirm(qty, "balance", priceRub + " ₽"))
+        makeBtn("С баланса", () => openDeviceConfirm(qty, "balance", priceRub + " ₽"))
       );
     } else {
       const short = Math.ceil(priceRub - balance);
       wrap.appendChild(
         makeBtn(
-          "💰 Пополнить на " + short + " ₽",
+          "Пополнить на " + short + " ₽",
           () => switchPage("plans-title", els.topupPresets),
           "secondary"
         )
       );
     }
     wrap.appendChild(
-      makeBtn("💎 Крипта", () => openDeviceConfirm(qty, "cryptobot", priceUsdt + " USDT"), "secondary")
+      makeBtn("Крипта", () => openDeviceConfirm(qty, "cryptobot", priceUsdt + " USDT"), "secondary")
     );
     wrap.appendChild(
-      makeBtn("💳 СБП", () => openDeviceConfirm(qty, "platega", priceRub + " ₽"), "secondary")
+      makeBtn("СБП", () => openDeviceConfirm(qty, "platega", priceRub + " ₽"), "secondary")
     );
     return wrap;
   }
@@ -1190,14 +1190,14 @@
         body: JSON.stringify({ qty: qty, provider: provider }),
       });
       if (result.status === "granted") {
-        showToast("✅ Устройства добавлены! Лимит: " + result.device_limit);
+        showToast("Устройства добавлены! Лимит: " + result.device_limit);
         await refreshDevices();
         return;
       }
       // status === "invoice"
       if (tg) tg.openLink(result.pay_url);
       pollInvoice(result.invoice_id, async (r) => {
-        showToast("✅ Оплата подтверждена! Лимит устройств: " + r.device_limit);
+        showToast("Оплата подтверждена! Лимит устройств: " + r.device_limit);
         await refreshDevices();
       });
     } catch (e) {
@@ -1225,7 +1225,7 @@
       const result = await api("/api/topup", { method: "POST", body: JSON.stringify({ amount: amount }) });
       if (tg) tg.openLink(result.pay_url);
       pollInvoice(result.invoice_id, async (r) => {
-        showToast("✅ Баланс пополнен! Текущий баланс: " + Math.round(r.balance) + " ₽");
+        showToast("Баланс пополнен! Текущий баланс: " + Math.round(r.balance) + " ₽");
         await refreshProfile();
       });
     } catch (e) {
@@ -1267,7 +1267,7 @@
   els.shareSubUrl.onclick = () => {
     const url = els.subUrl.textContent;
     if (!url) return;
-    const shareText = "🐸 Моя VPN-подписка";
+    const shareText = "Моя VPN-подписка";
     const shareUrl = "https://t.me/share/url?url=" + encodeURIComponent(url) + "&text=" + encodeURIComponent(shareText);
     if (tg) {
       tg.openTelegramLink(shareUrl);
