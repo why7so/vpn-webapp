@@ -400,6 +400,10 @@ body {
   border: 1px solid var(--line);
   border-radius: 999px;
   background: var(--surface);
+  /* Обе иконки берут цвет отсюда: это один орган управления, и менять его
+     окраску при переключении не за что. Зелёный тут тоже не нужен — акцент
+     в приложении означает «активно/основное действие», а смена темы ни то,
+     ни другое. */
   color: var(--text-dim);
   cursor: pointer;
   display: grid;
@@ -411,6 +415,10 @@ body {
   transform: scale(0.94);
 }
 
+.theme-toggle:hover {
+  color: var(--text);
+}
+
 /* Обе иконки лежат друг на друге и переключаются прозрачностью с поворотом:
    так смена темы читается как одно движение, а не как подмена картинки. */
 .theme-toggle .ic {
@@ -418,14 +426,6 @@ body {
   width: 18px;
   height: 18px;
   transition: opacity 0.32s ease, transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1);
-}
-
-.theme-toggle .ic-sun {
-  color: var(--warn);
-}
-
-.theme-toggle .ic-moon {
-  color: var(--accent);
 }
 
 /* Иконка показывает, ЧТО БУДЕТ после нажатия: на светлой — луна, на тёмной
