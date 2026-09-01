@@ -1304,17 +1304,27 @@
     const list = els.devicesList;
     list.innerHTML = "";
 
+    // Счётчик — сколько устройств знает подписку, все подряд и независимо от
+    // того, когда каждое заходило в последний раз. Лимит же считает НОДА и
+    // считает другое — одновременные соединения. Смешивать их в одной строке
+    // («4 из 3 одновременно») нельзя: получается, что лимит нарушен, хотя
+    // одновременно работающих могло быть и два.
     const active = devices.filter((d) => !d.blocked).length;
     els.devicesCount.textContent = active;
-    els.devicesLimit.textContent =
-      cachedDevices && cachedDevices.device_limit > 0
-        ? "из " + cachedDevices.device_limit + " одновременно"
-        : "без ограничений";
+    els.devicesLimit.textContent = deviceWord(active);
 
+    const limit = cachedDevices ? cachedDevices.device_limit : 0;
     const blocked = devices.length - active;
-    els.devicesSummaryHint.textContent = blocked
-      ? "Отключено: " + blocked + ". Их можно включить обратно в любой момент."
-      : "Здесь всё, что открывало вашу ссылку-подписку.";
+    const hint = [];
+    hint.push(
+      limit > 0
+        ? "Одновременно работают не больше " + limit + " — остальные подключатся, когда освободится место."
+        : "Ограничения по числу подключений нет."
+    );
+    if (blocked) {
+      hint.push("Отключено: " + blocked + " — можно включить обратно.");
+    }
+    els.devicesSummaryHint.textContent = hint.join(" ");
 
     els.devicesEmpty.classList.toggle("hidden", devices.length > 0);
     els.devicesNote.classList.toggle("hidden", devices.length === 0);
