@@ -920,7 +920,11 @@ input:focus {
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.6);
+  /* Размываем страницу под модалкой, а не просто гасим её: так видно, что
+     диалог лежит поверх, и остаётся связь с местом, откуда он открыт. */
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
   display: flex;
   align-items: flex-end;
   justify-content: center;
@@ -930,12 +934,57 @@ input:focus {
 .modal-card {
   width: 100%;
   max-width: 480px;
-  background: var(--surface);
+  background: rgba(38, 41, 36, 0.72);
+  backdrop-filter: blur(26px) saturate(165%);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
+  border-top: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: var(--r-md) var(--r-md) 0 0;
   padding: 20px 18px max(20px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+/* Без backdrop-filter (старый Android WebView, экономия батареи в iOS)
+   полупрозрачный фон превратился бы в мутное пятно с нечитаемым текстом.
+   Возвращаем непрозрачную подложку — стекла не будет, но интерфейс цел. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .bottom-nav {
+    background: rgba(20, 22, 19, 0.97);
+  }
+
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.72);
+  }
+
+  .modal-card {
+    background: var(--surface);
+  }
+}
+
+/* iOS/macOS «Уменьшить прозрачность» и аналоги — системная настройка, которую
+   включают именно из-за таких эффектов: кому-то от них рябит, кому-то они
+   мешают читать. Отключаем размытие целиком, а не ослабляем. */
+@media (prefers-reduced-transparency: reduce) {
+  .bottom-nav,
+  .modal-overlay,
+  .modal-card {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .bottom-nav {
+    background: rgba(20, 22, 19, 0.97);
+  }
+
+  .modal-overlay {
+    background: rgba(0, 0, 0, 0.72);
+  }
+
+  .modal-card {
+    background: var(--surface);
+  }
 }
 
 .modal-title {
@@ -1068,13 +1117,20 @@ input:focus {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: rgba(20, 22, 19, 0.82);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  /* Стекло: подложка полупрозрачная, размытие + подъём насыщенности, чтобы
+     цвет контента под панелью читался, а не уходил в серость. Блик по
+     верхней кромке (inset-тень) — то, что отличает стекло от просто
+     полупрозрачного блока: свет ложится на грань. */
+  background: rgba(20, 22, 19, 0.62);
+  backdrop-filter: blur(22px) saturate(165%);
+  -webkit-backdrop-filter: blur(22px) saturate(165%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
   border-radius: 999px;
   padding: 6px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.16),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.25),
+    0 10px 30px rgba(0, 0, 0, 0.45);
   z-index: 50;
   isolation: isolate; /* .nav-indicator позиционируется абсолютно внутри этого блока */
 }
