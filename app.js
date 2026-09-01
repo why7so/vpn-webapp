@@ -1094,14 +1094,27 @@
   }
 
   function deviceQtyButtons(qty, priceRub, priceUsdt) {
-    const balanceEnough = cachedProfile && cachedProfile.balance >= priceRub;
+    const balance = cachedProfile ? cachedProfile.balance : 0;
+    const balanceEnough = balance >= priceRub;
 
     const wrap = document.createElement("div");
     wrap.className = "pay-methods";
 
+    // Кнопку показываем всегда. Раньше при нехватке она просто исчезала, и
+    // это читалось как «оплаты с баланса тут не бывает» вместо «не хватает
+    // столько-то». Кнопка с суммой отвечает на оба вопроса сразу и ведёт к пополнению.
     if (balanceEnough) {
       wrap.appendChild(
         makeBtn("💰 С баланса", () => openDeviceConfirm(qty, "balance", priceRub + " ₽"))
+      );
+    } else {
+      const short = Math.ceil(priceRub - balance);
+      wrap.appendChild(
+        makeBtn(
+          "💰 Пополнить на " + short + " ₽",
+          () => switchPage("plans-title", els.topupPresets),
+          "secondary"
+        )
       );
     }
     wrap.appendChild(
