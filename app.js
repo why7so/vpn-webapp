@@ -345,8 +345,10 @@
 
   const PLATFORM_LABELS = { ios: "iOS", android: "Android", windows: "Windows" };
 
+  // Список на платформу, а не одно значение: так добавить второе приложение
+  // будет правкой данных, а не логики. Сейчас всюду один Happ.
   const PLATFORM_APPS = {
-    ios: ["incy", "happ"],
+    ios: ["happ"],
     android: ["happ"],
     windows: ["happ"],
     macos: ["happ"],
@@ -355,17 +357,10 @@
   };
 
   const APP_INFO = {
-    incy: {
-      name: "INCY",
-      scheme: "incy",
-      recommended: true,
-      storeUrls: { ios: "https://apps.apple.com/us/app/incy/id6756943388" },
-      storeLabels: { ios: "App Store" },
-    },
     happ: {
       name: "Happ",
       scheme: "happ",
-      recommended: false,
+      recommended: true,
       storeUrls: {
         ios: "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215",
         android: "https://play.google.com/store/apps/details?id=com.happproxy",
@@ -455,10 +450,13 @@
     els.connectAddSubBtn.textContent = subUrl ? "+ Добавить подписку" : "Сначала оформите подписку";
     els.connectAddSubBtn.onclick = () => {
       if (!subUrl) return;
-      const deepLink = app.scheme + "://add/" + encodeURIComponent(subUrl);
+      // Сырой URL, без encodeURIComponent: на percent-encoded Happ отвечает
+      // "Неизвестный протокол". Тот же формат отдаёт страница /import и
+      // connect.html, через который идёт путь из Telegram.
+      const deepLink = app.scheme + "://add/" + subUrl;
       if (tg) {
         // Telegram Mini App WebView не умеет открывать кастомные URI-схемы
-        // (incy://, happ://) — ни через tg.openLink(), ни через обычный
+        // (happ://) — ни через tg.openLink(), ни через обычный
         // window.location внутри себя (известное ограничение Telegram, см.
         // https://github.com/tdlib/telegram-bot-api/issues/299). Поэтому
         // открываем HTTPS-страницу connect.html — Telegram выпускает её во
