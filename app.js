@@ -213,8 +213,6 @@
     navAdmin: document.getElementById("nav-admin"),
     topbar: document.querySelector(".topbar"),
     themeToggle: document.getElementById("theme-toggle"),
-    themeSeg: document.getElementById("theme-seg"),
-    themeHint: document.getElementById("theme-hint"),
     adminTiles: document.getElementById("admin-tiles"),
     adminNodes: document.getElementById("admin-nodes"),
     adminPromos: document.getElementById("admin-promos"),
@@ -1783,12 +1781,6 @@
   // ---------- тема оформления ----------
 
   const THEME_KEY = "jc-theme";
-  const THEME_LABELS = {
-    light: "Всегда светлая.",
-    dark: "Всегда тёмная.",
-    system: "Как в системе — меняется вместе с настройкой телефона.",
-  };
-
   function currentTheme() {
     const t = document.documentElement.dataset.theme;
     return t === "light" || t === "dark" ? t : "system";
@@ -1816,14 +1808,6 @@
     }
   }
 
-  function renderThemeSeg() {
-    const value = currentTheme();
-    Array.prototype.forEach.call(els.themeSeg.children, (btn) => {
-      btn.classList.toggle("active", btn.dataset.themeValue === value);
-    });
-    els.themeHint.textContent = THEME_LABELS[value];
-  }
-
   function applyTheme(value) {
     document.documentElement.dataset.theme = value;
     try {
@@ -1833,17 +1817,13 @@
       // вернётся к системной. Ронять переключение из-за этого не за что.
     }
     syncTelegramChrome();
-    renderThemeSeg();
   }
 
-  els.themeSeg.onclick = (e) => {
-    const btn = e.target.closest(".seg-btn");
-    if (btn) applyTheme(btn.dataset.themeValue);
-  };
-
-  // Кнопка в шапке переключает на противоположную ТОМУ, ЧТО ВИДНО. Из
-  // системной это выводит в явную тему — и правильно: человек нажал на
-  // солнце, потому что хочет тёмную сейчас, а не «когда система решит».
+  // Единственный орган управления темой. Переключает на противоположную
+  // ТОМУ, ЧТО ВИДНО, поэтому из системного режима выводит в явный: человек
+  // нажал на солнце, потому что хочет тёмную сейчас, а не «когда система
+  // решит». Обратно в системную после этого не вернуться — она остаётся
+  // значением по умолчанию для тех, кто тему не трогал.
   els.themeToggle.onclick = () => {
     applyTheme(resolvedTheme() === "dark" ? "light" : "dark");
   };
@@ -1853,7 +1833,6 @@
     if (currentTheme() === "system") syncTelegramChrome();
   });
 
-  renderThemeSeg();
   syncTelegramChrome();
 
   // ---------- страницы (нижняя навигация переключает их, без скролла по одной длинной странице) ----------
