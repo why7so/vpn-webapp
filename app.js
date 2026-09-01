@@ -1270,17 +1270,6 @@
 
   // ---------- страница «Устройства» ----------
 
-  // Иконку выбираем по X-Device-Os, а если клиент его не прислал — по имени
-  // приложения. Ни то ни другое не обязано быть — тогда общий значок.
-  function devicePlatformIcon(device) {
-    const key = (device.platform || device.client_name || "").toLowerCase();
-    if (key.indexOf("ios") !== -1 || key.indexOf("iphone") !== -1 || key.indexOf("mac") !== -1) return "📱";
-    if (key.indexOf("android") !== -1) return "🤖";
-    if (key.indexOf("windows") !== -1) return "🖥";
-    if (key.indexOf("linux") !== -1) return "🐧";
-    return "📦";
-  }
-
   function formatSeen(iso) {
     if (!iso) return "—";
     const d = new Date(iso);
@@ -1318,11 +1307,6 @@
     devices.forEach((device) => {
       const card = document.createElement("div");
       card.className = "device-card" + (device.blocked ? " is-blocked" : "");
-
-      const icon = document.createElement("div");
-      icon.className = "device-icon";
-      icon.textContent = devicePlatformIcon(device);
-      card.appendChild(icon);
 
       const body = document.createElement("div");
       body.className = "device-body";
