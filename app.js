@@ -1316,6 +1316,8 @@
       name.textContent = device.name;
       body.appendChild(name);
 
+      // Приложение — отдельной строкой под названием устройства: "Happ" и
+      // "Hiddify" это программы, а не устройства, и в заголовке им не место.
       const meta = document.createElement("div");
       meta.className = "device-meta";
       const parts = [device.client_name, formatSeen(device.last_seen_at)];
