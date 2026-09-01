@@ -209,6 +209,14 @@
     devicesText: document.getElementById("devices-text"),
     devicesQtyLabel: document.getElementById("devices-qty-label"),
     devicesTrack: document.getElementById("devices-track"),
+    devicesOpenBtn: document.getElementById("devices-open-btn"),
+    devicesBack: document.getElementById("devices-back"),
+    devicesList: document.getElementById("devices-list"),
+    devicesCount: document.getElementById("devices-count"),
+    devicesLimit: document.getElementById("devices-limit"),
+    devicesSummaryHint: document.getElementById("devices-summary-hint"),
+    devicesEmpty: document.getElementById("devices-empty"),
+    devicesNote: document.getElementById("devices-note"),
     devicesPayMethods: document.getElementById("devices-pay-methods"),
 
     payModal: document.getElementById("pay-modal"),
@@ -1260,9 +1268,186 @@
     if (el) el.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
+  // ---------- страница «Устройства» ----------
+
+  // Иконку выбираем по X-Device-Os, а если клиент его не прислал — по имени
+  // приложения. Ни то ни другое не обязано быть — тогда общий значок.
+  function devicePlatformIcon(device) {
+    const key = (device.platform || device.client_name || "").toLowerCase();
+    if (key.indexOf("ios") !== -1 || key.indexOf("iphone") !== -1 || key.indexOf("mac") !== -1) return "📱";
+    if (key.indexOf("android") !== -1) return "🤖";
+    if (key.indexOf("windows") !== -1) return "🖥";
+    if (key.indexOf("linux") !== -1) return "🐧";
+    return "📦";
+  }
+
+  function formatSeen(iso) {
+    if (!iso) return "—";
+    const d = new Date(iso);
+    if (isNaN(d)) return "—";
+    const diffMin = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (diffMin < 2) return "только что";
+    if (diffMin < 60) return diffMin + " мин назад";
+    if (diffMin < 60 * 24) return Math.floor(diffMin / 60) + " ч назад";
+    return d.toLocaleDateString("ru-RU", { day: "2-digit", month: "2-digit", year: "numeric" });
+  }
+
+  // id устройства, у которого сейчас открыто поле переименования. Хранится
+  // отдельно от DOM: список перерисовывается целиком после каждого действия.
+  let renamingDeviceId = null;
+
+  function renderDevicesPage(devices) {
+    const list = els.devicesList;
+    list.innerHTML = "";
+
+    const active = devices.filter((d) => !d.blocked).length;
+    els.devicesCount.textContent = active;
+    els.devicesLimit.textContent =
+      cachedDevices && cachedDevices.device_limit > 0
+        ? "из " + cachedDevices.device_limit + " одновременно"
+        : "без ограничений";
+
+    const blocked = devices.length - active;
+    els.devicesSummaryHint.textContent = blocked
+      ? "Отключено: " + blocked + ". Их можно включить обратно в любой момент."
+      : "Здесь всё, что открывало вашу ссылку-подписку.";
+
+    els.devicesEmpty.classList.toggle("hidden", devices.length > 0);
+    els.devicesNote.classList.toggle("hidden", devices.length === 0);
+
+    devices.forEach((device) => {
+      const card = document.createElement("div");
+      card.className = "device-card" + (device.blocked ? " is-blocked" : "");
+
+      const icon = document.createElement("div");
+      icon.className = "device-icon";
+      icon.textContent = devicePlatformIcon(device);
+      card.appendChild(icon);
+
+      const body = document.createElement("div");
+      body.className = "device-body";
+
+      const name = document.createElement("div");
+      name.className = "device-name";
+      name.textContent = device.name;
+      body.appendChild(name);
+
+      const meta = document.createElement("div");
+      meta.className = "device-meta";
+      const parts = [device.client_name, formatSeen(device.last_seen_at)];
+      if (device.ip_address) parts.push(device.ip_address);
+      meta.textContent = parts.join(" · ");
+      body.appendChild(meta);
+
+      if (device.blocked) {
+        const badge = document.createElement("div");
+        badge.className = "device-badge blocked";
+        badge.textContent = "отключено";
+        body.appendChild(badge);
+      } else if (!device.identified_by_hwid) {
+        // Клиент не прислал X-Hwid: строка опознана лишь по имени приложения,
+        // и два устройства с ним склеятся в одно. Молчать об этом нельзя —
+        // человек решит, что видит полный список.
+        const badge = document.createElement("div");
+        badge.className = "device-badge";
+        badge.textContent = "приложение целиком";
+        body.appendChild(badge);
+      }
+
+      if (renamingDeviceId === device.id) {
+        const form = document.createElement("div");
+        form.className = "device-rename";
+        const input = document.createElement("input");
+        input.className = "input";
+        input.maxLength = 40;
+        input.value = device.custom_name || "";
+        input.placeholder = device.auto_name;
+        const save = document.createElement("button");
+        save.className = "device-btn accent";
+        save.textContent = "ОК";
+        save.onclick = () => renameDevice(device.id, input.value);
+        input.onkeydown = (e) => {
+          if (e.key === "Enter") renameDevice(device.id, input.value);
+          if (e.key === "Escape") {
+            renamingDeviceId = null;
+            renderDevicesPage(devices);
+          }
+        };
+        form.appendChild(input);
+        form.appendChild(save);
+        body.appendChild(form);
+        setTimeout(() => input.focus(), 0);
+      }
+
+      card.appendChild(body);
+
+      const actions = document.createElement("div");
+      actions.className = "device-actions";
+
+      const renameBtn = document.createElement("button");
+      renameBtn.className = "device-btn";
+      renameBtn.textContent = renamingDeviceId === device.id ? "Отмена" : "Имя";
+      renameBtn.onclick = () => {
+        renamingDeviceId = renamingDeviceId === device.id ? null : device.id;
+        renderDevicesPage(devices);
+      };
+      actions.appendChild(renameBtn);
+
+      const toggle = document.createElement("button");
+      toggle.className = "device-btn" + (device.blocked ? " accent" : " danger");
+      toggle.textContent = device.blocked ? "Включить" : "Отключить";
+      toggle.onclick = () => setDeviceBlocked(device.id, !device.blocked);
+      actions.appendChild(toggle);
+
+      card.appendChild(actions);
+      list.appendChild(card);
+    });
+  }
+
+  async function refreshDevicesPage() {
+    const data = await api("/api/devices");
+    cachedDevices = data;
+    renderDevicesPage(data.devices || []);
+  }
+
+  async function setDeviceBlocked(deviceId, blocked) {
+    try {
+      await api("/api/devices/block", {
+        method: "POST",
+        body: JSON.stringify({ device_id: deviceId, blocked: blocked }),
+      });
+      showToast(blocked ? "Отключено — конфигурация пропадёт в течение часа" : "Включено обратно");
+      renamingDeviceId = null;
+      await refreshDevicesPage();
+    } catch (e) {
+      showToast(e.message, true);
+    }
+  }
+
+  async function renameDevice(deviceId, name) {
+    try {
+      await api("/api/devices/rename", {
+        method: "POST",
+        body: JSON.stringify({ device_id: deviceId, name: name }),
+      });
+      renamingDeviceId = null;
+      await refreshDevicesPage();
+    } catch (e) {
+      showToast(e.message, true);
+    }
+  }
+
+  els.devicesOpenBtn.onclick = () => {
+    switchPage("devices");
+    // Список мог устареть с прошлого открытия: устройство могло прийти за
+    // подпиской, пока человек ходил по другим страницам.
+    refreshDevicesPage().catch((e) => showToast(e.message, true));
+  };
+  els.devicesBack.onclick = () => switchPage("about-card");
+
   // ---------- страницы (нижняя навигация переключает их, без скролла по одной длинной странице) ----------
 
-  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card"];
+  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card", "devices"];
   const pageEls = {};
   PAGE_IDS.forEach((id) => {
     pageEls[id] = document.querySelector('.page[data-page="' + id + '"]');
@@ -1286,7 +1471,13 @@
     }
   }
 
+  // Подстраницы, у которых нет своей вкладки в навбаре: пока мы на них,
+  // подсвеченной остаётся вкладка родителя — иначе индикатор повисает между
+  // кнопками и ни одна не выглядит активной.
+  const NAV_PARENT = { devices: "about-card" };
+
   function setActiveNav(targetId, skipAnim) {
+    targetId = NAV_PARENT[targetId] || targetId;
     if (targetId === currentNavTarget) return;
     currentNavTarget = targetId;
     els.navItems.forEach((btn) => {
