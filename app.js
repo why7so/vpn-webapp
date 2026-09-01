@@ -217,6 +217,18 @@
     devicesSummaryHint: document.getElementById("devices-summary-hint"),
     devicesEmpty: document.getElementById("devices-empty"),
     devicesNote: document.getElementById("devices-note"),
+    navAdmin: document.getElementById("nav-admin"),
+    adminTiles: document.getElementById("admin-tiles"),
+    adminNodes: document.getElementById("admin-nodes"),
+    adminPromos: document.getElementById("admin-promos"),
+    adminPromoCode: document.getElementById("admin-promo-code"),
+    adminPromoType: document.getElementById("admin-promo-type"),
+    adminPromoValue: document.getElementById("admin-promo-value"),
+    adminPromoLimit: document.getElementById("admin-promo-limit"),
+    adminPromoPlan: document.getElementById("admin-promo-plan"),
+    adminPlanWrap: document.getElementById("admin-plan-wrap"),
+    adminValueLabel: document.getElementById("admin-value-label"),
+    adminPromoCreate: document.getElementById("admin-promo-create"),
     devicesResetBtn: document.getElementById("devices-reset-btn"),
     devicesResetConfirm: document.getElementById("devices-reset-confirm"),
     devicesResetCancel: document.getElementById("devices-reset-cancel"),
@@ -510,6 +522,10 @@
   function renderProfile(profile) {
     cachedProfile = profile;
     els.balance.textContent = Math.round(profile.balance) + " ₽";
+    // Вкладка «Админ» — только тем, кто в ADMIN_IDS. Это лишь показ: доступ
+    // к данным закрыт на бэкенде, каждый админ-эндпоинт проверяет права сам.
+    els.navAdmin.classList.toggle("hidden", !profile.is_admin);
+
     els.discount.textContent = profile.discount_percent > 0 ? profile.discount_percent + "%" : "нет";
 
     // Скидка может действовать только на один тариф — тогда так и пишем.
@@ -1484,9 +1500,278 @@
   };
   els.devicesBack.onclick = () => switchPage("about-card");
 
+  // ---------- админ-панель ----------
+
+  let adminPromoType = "days";
+
+  // Порог, а не градиент: «почти полка» должно читаться с одного взгляда.
+  function meterLevel(v) {
+    if (v >= 85) return "crit";
+    if (v >= 65) return "warn";
+    return "";
+  }
+
+  function adminTile(label, value, suffix) {
+    const tile = document.createElement("div");
+    tile.className = "stat-tile";
+    const k = document.createElement("div");
+    k.className = "stat-k";
+    k.textContent = label;
+    const v = document.createElement("div");
+    v.className = "stat-v";
+    v.textContent = value;
+    if (suffix) {
+      const small = document.createElement("small");
+      small.textContent = suffix;
+      v.appendChild(small);
+    }
+    tile.appendChild(k);
+    tile.appendChild(v);
+    return tile;
+  }
+
+  function renderAdminTiles(totals) {
+    const box = els.adminTiles;
+    box.innerHTML = "";
+    box.appendChild(adminTile("Соединений", totals.connections));
+    box.appendChild(adminTile("Активных подписок", totals.subs));
+    box.appendChild(adminTile("Пользователей", totals.users));
+    box.appendChild(adminTile("Ноды онлайн", totals.nodes_up, " / " + totals.nodes_total));
+  }
+
+  function nodeStatRow(label, value, unit, fillPercent) {
+    const row = document.createElement("div");
+    row.className = "node-stat";
+
+    const name = document.createElement("span");
+    name.textContent = label;
+    row.appendChild(name);
+
+    const meter = document.createElement("span");
+    meter.className = "meter";
+    const fill = document.createElement("i");
+    fill.className = meterLevel(fillPercent);
+    fill.style.width = Math.max(0, Math.min(100, fillPercent)) + "%";
+    meter.appendChild(fill);
+    row.appendChild(meter);
+
+    const num = document.createElement("b");
+    num.textContent = value + unit;
+    row.appendChild(num);
+    return row;
+  }
+
+  function renderAdminNodes(nodes) {
+    const box = els.adminNodes;
+    box.innerHTML = "";
+
+    if (!nodes.length) {
+      const empty = document.createElement("div");
+      empty.className = "card";
+      empty.innerHTML = '<div class="email-hint">Нод в базе нет — подписка отдаётся по запасному списку из .env.</div>';
+      box.appendChild(empty);
+      return;
+    }
+
+    nodes.forEach((n) => {
+      const card = document.createElement("div");
+      card.className = "node-card";
+
+      const head = document.createElement("div");
+      head.className = "node-head";
+
+      const body = document.createElement("div");
+      body.style.flex = "1";
+      body.style.minWidth = "0";
+      const name = document.createElement("div");
+      name.className = "node-name";
+      name.textContent = n.name;
+      const host = document.createElement("div");
+      host.className = "node-host";
+      host.textContent = n.protocol + " · " + n.host;
+      body.appendChild(name);
+      body.appendChild(host);
+      head.appendChild(body);
+
+      const state = document.createElement("span");
+      state.className = "node-state" + (n.up ? "" : " down");
+      state.textContent = n.up ? "online" : n.state || "offline";
+      head.appendChild(state);
+      card.appendChild(head);
+
+      if (n.up && n.stats_at) {
+        // conns — абсолютное число, шкалы у него нет. Делим на 6 просто чтобы
+        // полоска отражала порядок величины: 600 соединений = полка.
+        if (n.cpu != null) card.appendChild(nodeStatRow("CPU", n.cpu, "%", n.cpu));
+        if (n.mem != null) card.appendChild(nodeStatRow("RAM", n.mem, "%", n.mem));
+        if (n.conns != null) card.appendChild(nodeStatRow("Conn", n.conns, "", n.conns / 6));
+      } else if (n.up) {
+        const hint = document.createElement("div");
+        hint.className = "node-host";
+        hint.textContent = "Мастер-сервер ещё не присылал нагрузку по этой ноде.";
+        card.appendChild(hint);
+      } else {
+        const hint = document.createElement("div");
+        hint.className = "node-down-hint";
+        hint.textContent = "Нода не отвечает — из подписок исключена.";
+        card.appendChild(hint);
+      }
+
+      box.appendChild(card);
+    });
+  }
+
+  function promoValueText(p) {
+    if (p.type === "days") return "+" + Math.round(p.value) + " " + dayWord(Math.round(p.value));
+    if (p.type === "balance") return "+" + Math.round(p.value) + " ₽ на баланс";
+    return "скидка " + Math.round(p.value) + "%";
+  }
+
+  function dayWord(n) {
+    if (n % 10 === 1 && n % 100 !== 11) return "день";
+    if (n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14)) return "дня";
+    return "дней";
+  }
+
+  function renderAdminPromos(promos) {
+    const box = els.adminPromos;
+    box.innerHTML = "";
+
+    if (!promos.length) {
+      const empty = document.createElement("div");
+      empty.className = "card";
+      empty.innerHTML = '<div class="email-hint">Промокодов пока нет.</div>';
+      box.appendChild(empty);
+      return;
+    }
+
+    promos.forEach((p) => {
+      const card = document.createElement("div");
+      card.className = "promo-card" + (p.active ? "" : " is-off");
+
+      const body = document.createElement("div");
+      body.className = "promo-body";
+
+      const code = document.createElement("div");
+      code.className = "promo-code";
+      code.textContent = p.code;
+      body.appendChild(code);
+
+      const parts = [promoValueText(p)];
+      parts.push(p.limit ? p.used + " из " + p.limit : "использован " + p.used + " раз");
+      if (p.plan_code) parts.push("тариф " + p.plan_code);
+      if (!p.active) parts.push("выключен");
+      const sub = document.createElement("div");
+      sub.className = "promo-sub";
+      sub.textContent = parts.join(" · ");
+      body.appendChild(sub);
+
+      card.appendChild(body);
+
+      if (p.active) {
+        const off = document.createElement("button");
+        off.className = "device-btn danger";
+        off.textContent = "Выключить";
+        off.onclick = () => disablePromo(p.code);
+        card.appendChild(off);
+      }
+
+      box.appendChild(card);
+    });
+  }
+
+  function renderAdminPromoForm() {
+    // Подпись поля и видимость привязки к тарифу зависят от типа: у «дней» и
+    // «баланса» привязывать нечего — скидки там нет.
+    const isDiscount = adminPromoType === "discount";
+    els.adminValueLabel.textContent =
+      adminPromoType === "days" ? "Дней" : adminPromoType === "balance" ? "Сумма, ₽" : "Скидка, %";
+    els.adminPromoValue.placeholder = adminPromoType === "days" ? "30" : adminPromoType === "balance" ? "300" : "25";
+    els.adminPlanWrap.classList.toggle("hidden", !isDiscount);
+
+    Array.prototype.forEach.call(els.adminPromoType.children, (btn) => {
+      btn.classList.toggle("active", btn.dataset.type === adminPromoType);
+    });
+
+    if (isDiscount && !els.adminPromoPlan.options.length) {
+      const any = document.createElement("option");
+      any.value = "";
+      any.textContent = "любой тариф";
+      els.adminPromoPlan.appendChild(any);
+      cachedPlans.forEach((plan) => {
+        const opt = document.createElement("option");
+        opt.value = plan.code;
+        opt.textContent = plan.title;
+        els.adminPromoPlan.appendChild(opt);
+      });
+    }
+  }
+
+  async function refreshAdmin() {
+    const data = await api("/api/admin/overview");
+    renderAdminTiles(data.totals);
+    renderAdminNodes(data.nodes || []);
+    renderAdminPromos(data.promos || []);
+    renderAdminPromoForm();
+  }
+
+  async function createPromo() {
+    const code = els.adminPromoCode.value.trim();
+    const value = els.adminPromoValue.value.trim();
+    if (!code) {
+      showToast("Введите код", true);
+      return;
+    }
+    if (!value) {
+      showToast("Введите значение", true);
+      return;
+    }
+
+    els.adminPromoCreate.disabled = true;
+    try {
+      await api("/api/admin/promo", {
+        method: "POST",
+        body: JSON.stringify({
+          code: code,
+          type: adminPromoType,
+          value: Number(value),
+          limit: els.adminPromoLimit.value.trim() || null,
+          plan_code: adminPromoType === "discount" ? els.adminPromoPlan.value || null : null,
+        }),
+      });
+      showToast("Промокод " + code.toUpperCase() + " создан");
+      els.adminPromoCode.value = "";
+      els.adminPromoValue.value = "";
+      els.adminPromoLimit.value = "";
+      await refreshAdmin();
+    } catch (e) {
+      showToast(e.message, true);
+    } finally {
+      els.adminPromoCreate.disabled = false;
+    }
+  }
+
+  async function disablePromo(code) {
+    try {
+      await api("/api/admin/promo/disable", { method: "POST", body: JSON.stringify({ code: code }) });
+      showToast("Промокод " + code + " выключен");
+      await refreshAdmin();
+    } catch (e) {
+      showToast(e.message, true);
+    }
+  }
+
+  els.adminPromoType.onclick = (e) => {
+    const btn = e.target.closest(".seg-btn");
+    if (!btn) return;
+    adminPromoType = btn.dataset.type;
+    renderAdminPromoForm();
+  };
+  els.adminPromoCreate.onclick = createPromo;
+
   // ---------- страницы (нижняя навигация переключает их, без скролла по одной длинной странице) ----------
 
-  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card", "devices"];
+  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card", "devices", "admin"];
   const pageEls = {};
   PAGE_IDS.forEach((id) => {
     pageEls[id] = document.querySelector('.page[data-page="' + id + '"]');
@@ -1660,7 +1945,14 @@
   }
 
   els.navItems.forEach((btn) => {
-    btn.onclick = () => switchPage(btn.dataset.target);
+    btn.onclick = () => {
+      switchPage(btn.dataset.target);
+      // Сводка админа живая: соединения и нагрузка нод меняются между
+      // заходами, кешировать её смысла нет.
+      if (btn.dataset.target === "admin") {
+        refreshAdmin().catch((e) => showToast(e.message, true));
+      }
+    };
   });
 
   window.addEventListener("resize", () => moveNavIndicator(true));
