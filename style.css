@@ -142,6 +142,11 @@
 
 * {
   box-sizing: border-box;
+  /* Android рисует по касанию полупрозрачный синий прямоугольник — по
+     габаритам элемента, не считаясь со скруглением, поэтому у круглых
+     кнопок и пилюль он торчит углами. Гасим и отвечаем на касание сами:
+     ниже у кнопок есть :active со сжатием и притемнением. */
+  -webkit-tap-highlight-color: transparent;
 }
 
 body {
@@ -993,6 +998,12 @@ body {
   cursor: pointer;
   border: none;
   color: var(--text);
+}
+
+.chip:active,
+.seg-btn:active,
+.app-option:active {
+  opacity: 0.72;
 }
 
 .chip.active {
