@@ -384,6 +384,82 @@ body {
 }
 
 
+
+/* ---------- переключатель темы в шапке ---------- */
+
+.theme-toggle {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text-dim);
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
+}
+
+.theme-toggle:active {
+  transform: scale(0.94);
+}
+
+/* Обе иконки лежат друг на друге и переключаются прозрачностью с поворотом:
+   так смена темы читается как одно движение, а не как подмена картинки. */
+.theme-toggle .ic {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  transition: opacity 0.32s ease, transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1);
+}
+
+.theme-toggle .ic-sun {
+  color: var(--warn);
+}
+
+.theme-toggle .ic-moon {
+  color: var(--accent);
+}
+
+/* Показываем иконку ТЕКУЩЕЙ темы, а не будущей: кнопка отвечает на вопрос
+   «что сейчас», а не загадывает, что будет после нажатия. */
+:root[data-theme="dark"] .ic-sun,
+:root[data-theme="light"] .ic-moon {
+  opacity: 0;
+  transform: rotate(-90deg) scale(0.4);
+}
+
+:root[data-theme="dark"] .ic-moon,
+:root[data-theme="light"] .ic-sun {
+  opacity: 1;
+  transform: none;
+}
+
+/* Системная тема: иконку выбирает сама система. */
+:root[data-theme="system"] .ic-sun {
+  opacity: 1;
+  transform: none;
+}
+
+:root[data-theme="system"] .ic-moon {
+  opacity: 0;
+  transform: rotate(90deg) scale(0.4);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] .ic-sun {
+    opacity: 0;
+    transform: rotate(-90deg) scale(0.4);
+  }
+
+  :root[data-theme="system"] .ic-moon {
+    opacity: 1;
+    transform: none;
+  }
+}
+
 /* ---------- generic card ---------- */
 
 .card {

@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=23" />
+  <link rel="stylesheet" href="style.css?v=24" />
 </head>
 <body>
   <div id="app">
@@ -46,6 +46,18 @@
           </svg>
           <span id="brand-name">Jay Connect</span>
         </div>
+        <!-- Быстрое переключение светлая/тёмная. Полный выбор, включая
+             системную, живёт в «Аккаунте»: третье состояние в кнопке с двумя
+             иконками не показать, а гадать по кругу пользователь не должен. -->
+        <button class="theme-toggle" id="theme-toggle" aria-label="Сменить тему">
+          <svg class="ic ic-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <circle cx="12" cy="12" r="4.2"></circle>
+            <path d="M12 2.6v2.2M12 19.2v2.2M4.2 12H2M22 12h-2.2M6.5 6.5 4.9 4.9M19.1 19.1l-1.6-1.6M17.5 6.5l1.6-1.6M4.9 19.1l1.6-1.6"></path>
+          </svg>
+          <svg class="ic ic-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20.5 14.3A8.6 8.6 0 0 1 9.7 3.5a8.6 8.6 0 1 0 10.8 10.8z"></path>
+          </svg>
+        </button>
       </header>
 
       <!-- ===== Страница 1: Главная ===== -->
@@ -474,6 +486,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=23"></script>
+  <script src="app.js?v=24"></script>
 </body>
 </html>

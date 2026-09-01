@@ -211,6 +211,7 @@
     devicesEmpty: document.getElementById("devices-empty"),
     devicesNote: document.getElementById("devices-note"),
     navAdmin: document.getElementById("nav-admin"),
+    themeToggle: document.getElementById("theme-toggle"),
     themeSeg: document.getElementById("theme-seg"),
     themeHint: document.getElementById("theme-hint"),
     adminTiles: document.getElementById("admin-tiles"),
@@ -1823,6 +1824,13 @@
   els.themeSeg.onclick = (e) => {
     const btn = e.target.closest(".seg-btn");
     if (btn) applyTheme(btn.dataset.themeValue);
+  };
+
+  // Кнопка в шапке переключает на противоположную ТОМУ, ЧТО ВИДНО. Из
+  // системной это выводит в явную тему — и правильно: человек нажал на
+  // солнце, потому что хочет тёмную сейчас, а не «когда система решит».
+  els.themeToggle.onclick = () => {
+    applyTheme(resolvedTheme() === "dark" ? "light" : "dark");
   };
 
   // Системная тема может смениться, пока приложение открыто.
