@@ -266,7 +266,7 @@
     emailCodeConfirm: document.getElementById("email-code-confirm"),
     emailCodeCancel: document.getElementById("email-code-cancel"),
 
-    bottomNav: document.getElementById("bottom-nav"),
+    bottomNav: document.getElementById("bottom-nav-wrap"),
     navItems: document.querySelectorAll(".nav-item"),
 
     toast: document.getElementById("toast"),
@@ -1784,7 +1784,11 @@
     if (!navIndicator) return;
     const activeBtn = Array.from(els.navItems).find((b) => b.classList.contains("active"));
     if (!activeBtn) return;
-    const x = activeBtn.offsetLeft;
+    // Ширина едет вместе с положением: вкладки теперь разной ширины из-за
+    // подписей, и индикатор фиксированного размера промахивался бы мимо.
+    // Отсчёт от левого края панели, а не от края кнопки: у индикатора
+    // left: 6px, ровно как внутренний отступ .bottom-nav.
+    const x = activeBtn.offsetLeft - 6;
     navIndicator.style.width = activeBtn.offsetWidth + "px";
     navIndicator.classList.toggle("no-anim", !!skipAnim);
     navIndicator.style.transform = "translateX(" + x + "px)";
