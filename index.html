@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=13" />
+  <link rel="stylesheet" href="style.css?v=14" />
 </head>
 <body>
   <div id="app">
@@ -266,6 +266,22 @@
             <span class="dev-summary-limit" id="devices-limit">—</span>
           </div>
           <div class="email-hint" id="devices-summary-hint"></div>
+
+          <!-- Единственный настоящий отзыв доступа: меняет ключ, а с ним и
+               ссылку-подписку. Поэтому за кнопкой шаг подтверждения. -->
+          <button class="btn secondary btn-standalone device-reset-btn" id="devices-reset-btn">
+            Отключить все устройства
+          </button>
+          <div class="hidden" id="devices-reset-confirm">
+            <div class="email-hint devices-reset-warning">
+              Ссылка-подписка сменится, и доступ пропадёт сразу на всех устройствах,
+              включая это. На тех, что оставляете, подписку нужно будет добавить заново.
+            </div>
+            <div class="row">
+              <button class="btn secondary" id="devices-reset-cancel">Отмена</button>
+              <button class="btn danger" id="devices-reset-apply">Отключить всё</button>
+            </div>
+          </div>
         </div>
 
         <div id="devices-list"></div>
@@ -375,6 +391,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=13"></script>
+  <script src="app.js?v=14"></script>
 </body>
 </html>

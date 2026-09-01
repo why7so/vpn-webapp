@@ -217,6 +217,10 @@
     devicesSummaryHint: document.getElementById("devices-summary-hint"),
     devicesEmpty: document.getElementById("devices-empty"),
     devicesNote: document.getElementById("devices-note"),
+    devicesResetBtn: document.getElementById("devices-reset-btn"),
+    devicesResetConfirm: document.getElementById("devices-reset-confirm"),
+    devicesResetCancel: document.getElementById("devices-reset-cancel"),
+    devicesResetApply: document.getElementById("devices-reset-apply"),
     devicesPayMethods: document.getElementById("devices-pay-methods"),
 
     payModal: document.getElementById("pay-modal"),
@@ -1421,8 +1425,36 @@
     }
   }
 
+  function showResetConfirm(show) {
+    els.devicesResetConfirm.classList.toggle("hidden", !show);
+    els.devicesResetBtn.classList.toggle("hidden", show);
+  }
+
+  async function resetAllDevices() {
+    els.devicesResetApply.disabled = true;
+    try {
+      await api("/api/devices/reset", { method: "POST", body: JSON.stringify({}) });
+      showToast("Все устройства отключены — ссылка обновлена");
+      showResetConfirm(false);
+      renamingDeviceId = null;
+      // Профиль тоже: ссылка-подписка сменилась, а её показывает страница
+      // подключения — иначе там осталась бы мёртвая.
+      await refreshProfile();
+      await refreshDevicesPage();
+    } catch (e) {
+      showToast(e.message, true);
+    } finally {
+      els.devicesResetApply.disabled = false;
+    }
+  }
+
+  els.devicesResetBtn.onclick = () => showResetConfirm(true);
+  els.devicesResetCancel.onclick = () => showResetConfirm(false);
+  els.devicesResetApply.onclick = resetAllDevices;
+
   els.devicesOpenBtn.onclick = () => {
     switchPage("devices");
+    showResetConfirm(false);
     // Список мог устареть с прошлого открытия: устройство могло прийти за
     // подпиской, пока человек ходил по другим страницам.
     refreshDevicesPage().catch((e) => showToast(e.message, true));

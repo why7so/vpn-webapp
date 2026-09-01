@@ -454,6 +454,22 @@ body {
   color: var(--text-dim);
 }
 
+/* Кнопка полного сброса: намеренно не красная в покое — красной делаем
+   только подтверждение, чтобы случайное касание не выглядело как действие. */
+.device-reset-btn {
+  margin-top: 12px;
+}
+
+.devices-reset-warning {
+  margin: 10px 0;
+  color: var(--danger);
+}
+
+.btn.danger {
+  background: var(--danger);
+  color: var(--bg);
+}
+
 .device-card {
   background: var(--surface);
   border-radius: var(--r-md);
