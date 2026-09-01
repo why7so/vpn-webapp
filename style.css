@@ -1,18 +1,49 @@
+/* Тема: тёмная — база, светлая и системная переопределяют токены ниже.
+   Раньше тёмная была прибита намеренно, чтобы оформление не менялось от
+   темы Telegram. Теперь выбор явный и принадлежит пользователю: значение
+   лежит в localStorage и подставляется в data-theme инлайн-скриптом в
+   <head> — до отрисовки, иначе на светлой теме моргал бы тёмный экран. */
 :root {
   color-scheme: dark;
 
-  /* Тема зафиксирована на тёмную намеренно — не берём цвета из
-     var(--tg-theme-*), чтобы оформление не менялось у пользователей
-     со светской темой в Telegram. */
   --bg: #0b0c0b;
   --surface: #1a1c1a;
   --surface-2: #232622;
+  --surface-3: #2a2e27;
   --text: #f3f5f1;
   --text-dim: #8b928c;
   --accent: #52AA52;
   --accent-ink: #0b0c0b;
   --danger: #ff6b6b;
+  --warn: #d6a33a;
   --track: rgba(255, 255, 255, 0.1);
+
+  /* Тонкие линии и подсветки. Отдельно от --surface-*: это не заливка, а
+     граница, и в светлой теме она идёт затемнением, а не осветлением. */
+  --line: rgba(255, 255, 255, 0.07);
+  --line-strong: rgba(255, 255, 255, 0.2);
+
+  --accent-soft: rgba(82, 170, 82, 0.16);
+  --accent-soft-2: rgba(82, 170, 82, 0.28);
+  --accent-glow: rgba(82, 170, 82, 0.07);
+  --danger-soft: rgba(255, 107, 107, 0.15);
+
+  /* Стекло нижней панели и модалок. В светлой теме подложка светлая, а
+     блик по кромке — почти белый, иначе стекло выглядит грязным. */
+  --glass-nav: rgba(22, 28, 24, 0.62);
+  --glass-nav-solid: rgba(22, 28, 24, 0.97);
+  --glass-sheet: rgba(38, 41, 36, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.09);
+  --glass-highlight: rgba(255, 255, 255, 0.05);
+  --glass-highlight-2: rgba(255, 255, 255, 0.14);
+  --scrim: rgba(0, 0, 0, 0.45);
+  --scrim-solid: rgba(0, 0, 0, 0.72);
+
+  --shadow-nav: 0 10px 30px rgba(0, 0, 0, 0.35);
+  --shadow-pop: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --shadow-card: 0 10px 26px rgba(0, 0, 0, 0.35);
+  --shadow-lift: 0 40px 100px rgba(0, 0, 0, 0.55);
+  --shadow-inset: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
 
   /* Переключение страниц: одна длительность на уходящую и приходящую
      страницу — они идут внахлёст, а не друг за другом. */
@@ -22,6 +53,91 @@
   --r-lg: 24px;
   --r-md: 16px;
   --r-sm: 12px;
+}
+
+/* Светлая палитра. Зелёный акцент притемнён: #52AA52 на белом даёт
+   контраст 2.6:1 и на кнопках читается плохо. */
+:root[data-theme="light"],
+:root[data-theme="system"] {
+  color-scheme: light;
+
+  --bg: #eef0ec;
+  --surface: #ffffff;
+  --surface-2: #eff2ed;
+  --surface-3: #e4e8e0;
+  --text: #12160f;
+  --text-dim: #6a746a;
+  --accent: #3f9142;
+  --accent-ink: #ffffff;
+  --danger: #c7433f;
+  --warn: #b8842e;
+  --track: rgba(0, 0, 0, 0.09);
+
+  --line: rgba(0, 0, 0, 0.08);
+  --line-strong: rgba(0, 0, 0, 0.22);
+
+  --accent-soft: rgba(63, 145, 66, 0.12);
+  --accent-soft-2: rgba(63, 145, 66, 0.2);
+  --accent-glow: rgba(63, 145, 66, 0.08);
+  --danger-soft: rgba(199, 67, 63, 0.12);
+
+  --glass-nav: rgba(255, 255, 255, 0.62);
+  --glass-nav-solid: rgba(255, 255, 255, 0.97);
+  --glass-sheet: rgba(255, 255, 255, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.75);
+  --glass-highlight: rgba(255, 255, 255, 0.9);
+  --glass-highlight-2: rgba(255, 255, 255, 0.95);
+  --scrim: rgba(16, 24, 14, 0.32);
+  --scrim-solid: rgba(16, 24, 14, 0.55);
+
+  --shadow-nav: 0 10px 30px rgba(20, 32, 18, 0.12);
+  --shadow-pop: 0 4px 16px rgba(20, 32, 18, 0.14);
+  --shadow-card: 0 10px 26px rgba(20, 32, 18, 0.12);
+  --shadow-lift: 0 30px 70px rgba(20, 32, 18, 0.14);
+  --shadow-inset: 0 1px 0 rgba(255, 255, 255, 0.7) inset;
+}
+
+/* «Системная» = светлая только когда система просит светлую. Тёмная —
+   база, поэтому обратного правила не нужно. */
+@media (prefers-color-scheme: dark) {
+  :root[data-theme="system"] {
+    color-scheme: dark;
+
+    --bg: #0b0c0b;
+    --surface: #1a1c1a;
+    --surface-2: #232622;
+    --surface-3: #2a2e27;
+    --text: #f3f5f1;
+    --text-dim: #8b928c;
+    --accent: #52AA52;
+    --accent-ink: #0b0c0b;
+    --danger: #ff6b6b;
+    --warn: #d6a33a;
+    --track: rgba(255, 255, 255, 0.1);
+
+    --line: rgba(255, 255, 255, 0.07);
+    --line-strong: rgba(255, 255, 255, 0.2);
+
+    --accent-soft: rgba(82, 170, 82, 0.16);
+    --accent-soft-2: rgba(82, 170, 82, 0.28);
+    --accent-glow: rgba(82, 170, 82, 0.07);
+    --danger-soft: rgba(255, 107, 107, 0.15);
+
+    --glass-nav: rgba(22, 28, 24, 0.62);
+    --glass-nav-solid: rgba(22, 28, 24, 0.97);
+    --glass-sheet: rgba(38, 41, 36, 0.72);
+    --glass-border: rgba(255, 255, 255, 0.09);
+    --glass-highlight: rgba(255, 255, 255, 0.05);
+    --glass-highlight-2: rgba(255, 255, 255, 0.14);
+    --scrim: rgba(0, 0, 0, 0.45);
+    --scrim-solid: rgba(0, 0, 0, 0.72);
+
+    --shadow-nav: 0 10px 30px rgba(0, 0, 0, 0.35);
+    --shadow-pop: 0 4px 16px rgba(0, 0, 0, 0.4);
+    --shadow-card: 0 10px 26px rgba(0, 0, 0, 0.35);
+    --shadow-lift: 0 40px 100px rgba(0, 0, 0, 0.55);
+    --shadow-inset: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+  }
 }
 
 * {
@@ -519,7 +635,7 @@ body {
 }
 
 .device-badge.blocked {
-  background: rgba(255, 107, 107, 0.15);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -604,7 +720,7 @@ body {
 
 .app-option.active {
   border-color: var(--accent);
-  background: rgba(163, 232, 63, 0.14);
+  background: var(--accent-soft);
 }
 
 .app-option-badge {
@@ -873,7 +989,7 @@ input:focus {
 }
 
 .legal-link + .legal-link {
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--line);
 }
 
 /* ---------- account page ---------- */
@@ -887,7 +1003,7 @@ input:focus {
 }
 
 .account-row + .account-row {
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  border-top: 1px solid var(--line);
 }
 
 .account-row-label {
@@ -913,7 +1029,7 @@ input:focus {
   font-size: 13px;
   max-width: 90vw;
   text-align: center;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--shadow-pop);
   z-index: 100;
 }
 
@@ -924,7 +1040,7 @@ input:focus {
   inset: 0;
   /* Размываем страницу под модалкой, а не просто гасим её: так видно, что
      диалог лежит поверх, и остаётся связь с местом, откуда он открыт. */
-  background: rgba(0, 0, 0, 0.45);
+  background: var(--scrim);
   backdrop-filter: blur(10px) saturate(140%);
   -webkit-backdrop-filter: blur(10px) saturate(140%);
   display: flex;
@@ -936,16 +1052,16 @@ input:focus {
 .modal-card {
   width: 100%;
   max-width: 480px;
-  background: rgba(38, 41, 36, 0.72);
+  background: var(--glass-sheet);
   backdrop-filter: blur(26px) saturate(165%);
   -webkit-backdrop-filter: blur(26px) saturate(165%);
-  border-top: 1px solid rgba(255, 255, 255, 0.12);
+  border-top: 1px solid var(--glass-border);
   border-radius: var(--r-md) var(--r-md) 0 0;
   padding: 20px 18px max(20px, env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 4px;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14);
+  box-shadow: inset 0 1px 0 var(--glass-highlight-2);
 }
 
 /* Без backdrop-filter (старый Android WebView, экономия батареи в iOS)
@@ -953,11 +1069,11 @@ input:focus {
    Возвращаем непрозрачную подложку — стекла не будет, но интерфейс цел. */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
   .bottom-nav {
-    background: rgba(22, 28, 24, 0.97);
+    background: var(--glass-nav-solid);
   }
 
   .modal-overlay {
-    background: rgba(0, 0, 0, 0.72);
+    background: var(--scrim-solid);
   }
 
   .modal-card {
@@ -977,11 +1093,11 @@ input:focus {
   }
 
   .bottom-nav {
-    background: rgba(22, 28, 24, 0.97);
+    background: var(--glass-nav-solid);
   }
 
   .modal-overlay {
-    background: rgba(0, 0, 0, 0.72);
+    background: var(--scrim-solid);
   }
 
   .modal-card {
@@ -1189,12 +1305,12 @@ input:focus {
   padding: 3px 9px;
   border-radius: 999px;
   flex-shrink: 0;
-  background: rgba(82, 170, 82, 0.16);
+  background: var(--accent-soft);
   color: var(--accent);
 }
 
 .node-state.down {
-  background: rgba(255, 107, 107, 0.16);
+  background: var(--danger-soft);
   color: var(--danger);
 }
 
@@ -1238,7 +1354,7 @@ input:focus {
 }
 
 .meter i.warn {
-  background: #d6a33a;
+  background: var(--warn);
 }
 
 .meter i.crit {
@@ -1408,15 +1524,15 @@ select.input:focus {
      цвет контента под панелью читался, а не уходил в серость. Блик по
      верхней кромке (inset-тень) — то, что отличает стекло от просто
      полупрозрачного блока: свет ложится на грань. */
-  background: rgba(22, 28, 24, 0.62);
+  background: var(--glass-nav);
   backdrop-filter: blur(22px) saturate(180%);
   -webkit-backdrop-filter: blur(22px) saturate(180%);
-  border: 1px solid rgba(255, 255, 255, 0.09);
+  border: 1px solid var(--glass-border);
   border-radius: 26px;
   padding: 6px;
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.05),
-    0 10px 30px rgba(0, 0, 0, 0.35);
+    inset 0 1px 0 var(--glass-highlight),
+    var(--shadow-nav);
   isolation: isolate; /* .nav-indicator позиционируется абсолютно внутри этого блока */
 }
 
@@ -1433,10 +1549,10 @@ select.input:focus {
   left: 6px;
   width: 70px;
   border-radius: 20px;
-  background: rgba(82, 170, 82, 0.28);
+  background: var(--accent-soft-2);
   box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.25),
-    0 2px 8px rgba(82, 170, 82, 0.18);
+    inset 0 1px 0 var(--glass-highlight-2),
+    0 2px 8px var(--accent-soft);
   pointer-events: none;
   z-index: 0;
   will-change: transform, width;
@@ -1554,7 +1670,7 @@ select.input:focus {
     align-items: flex-start;
     padding: 56px 24px;
     background:
-      radial-gradient(900px 480px at 50% -8%, rgba(163, 232, 63, 0.07), transparent 62%),
+      radial-gradient(900px 480px at 50% -8%, var(--accent-glow), transparent 62%),
       var(--bg);
   }
 
@@ -1565,10 +1681,10 @@ select.input:focus {
 
   #screen-main {
     background: var(--surface);
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid var(--line);
     border-radius: 32px;
     padding: 22px 22px 112px;
-    box-shadow: 0 40px 100px rgba(0, 0, 0, 0.55), 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+    box-shadow: var(--shadow-lift), var(--shadow-inset);
   }
 
   #loading {
@@ -1601,7 +1717,7 @@ select.input:focus {
   }
 
   .btn.secondary:hover {
-    background: #2a2e27;
+    background: var(--surface-3);
   }
 
   .btn-manage:hover {
@@ -1630,10 +1746,10 @@ select.input:focus {
 
   .plan-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 10px 26px rgba(0, 0, 0, 0.35);
+    box-shadow: var(--shadow-card);
   }
 
   input:hover {
-    border-color: rgba(255, 255, 255, 0.2);
+    border-color: var(--line-strong);
   }
 }

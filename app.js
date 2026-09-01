@@ -7,15 +7,8 @@
   if (tg) {
     tg.ready();
     tg.expand();
-    // Тема приложения зафиксирована на тёмную — принудительно красим системную
-    // шапку/фон Telegram-WebView, чтобы они не подстраивались под светлую тему
-    // пользователя и не спорили с нашим тёмным дизайном.
-    try {
-      if (tg.setHeaderColor) tg.setHeaderColor("#0b0c0b");
-      if (tg.setBackgroundColor) tg.setBackgroundColor("#0b0c0b");
-    } catch (e) {
-      /* старые клиенты Telegram могут не поддерживать эти методы */
-    }
+    // Шапку и фон Telegram красит syncTelegramChrome ниже — по выбранной
+    // теме, а не жёстко в тёмное, как было когда тема была одна.
   }
 
   const initData = tg ? tg.initData : "";
@@ -218,6 +211,8 @@
     devicesEmpty: document.getElementById("devices-empty"),
     devicesNote: document.getElementById("devices-note"),
     navAdmin: document.getElementById("nav-admin"),
+    themeSeg: document.getElementById("theme-seg"),
+    themeHint: document.getElementById("theme-hint"),
     adminTiles: document.getElementById("admin-tiles"),
     adminNodes: document.getElementById("admin-nodes"),
     adminPromos: document.getElementById("admin-promos"),
@@ -1768,6 +1763,75 @@
     renderAdminPromoForm();
   };
   els.adminPromoCreate.onclick = createPromo;
+
+  // ---------- тема оформления ----------
+
+  const THEME_KEY = "jc-theme";
+  const THEME_LABELS = {
+    light: "Всегда светлая.",
+    dark: "Всегда тёмная.",
+    system: "Как в системе — меняется вместе с настройкой телефона.",
+  };
+
+  function currentTheme() {
+    const t = document.documentElement.dataset.theme;
+    return t === "light" || t === "dark" ? t : "system";
+  }
+
+  // Что видит пользователь прямо сейчас: "system" сам по себе цветом не
+  // является, его надо разрешить через системную настройку.
+  function resolvedTheme() {
+    const t = currentTheme();
+    if (t !== "system") return t;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  // Telegram красит свою шапку и фон сам и о нашей теме не знает — если не
+  // сообщить, вокруг светлого приложения останется чёрная рамка.
+  function syncTelegramChrome() {
+    if (!tg) return;
+    const dark = resolvedTheme() === "dark";
+    const bg = dark ? "#0b0c0b" : "#eef0ec";
+    try {
+      if (tg.setHeaderColor) tg.setHeaderColor(bg);
+      if (tg.setBackgroundColor) tg.setBackgroundColor(bg);
+    } catch (e) {
+      /* старые клиенты Telegram могут не поддерживать эти методы */
+    }
+  }
+
+  function renderThemeSeg() {
+    const value = currentTheme();
+    Array.prototype.forEach.call(els.themeSeg.children, (btn) => {
+      btn.classList.toggle("active", btn.dataset.themeValue === value);
+    });
+    els.themeHint.textContent = THEME_LABELS[value];
+  }
+
+  function applyTheme(value) {
+    document.documentElement.dataset.theme = value;
+    try {
+      localStorage.setItem(THEME_KEY, value);
+    } catch (e) {
+      // Приватный режим и т.п.: тема доживёт до перезагрузки страницы и
+      // вернётся к системной. Ронять переключение из-за этого не за что.
+    }
+    syncTelegramChrome();
+    renderThemeSeg();
+  }
+
+  els.themeSeg.onclick = (e) => {
+    const btn = e.target.closest(".seg-btn");
+    if (btn) applyTheme(btn.dataset.themeValue);
+  };
+
+  // Системная тема может смениться, пока приложение открыто.
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
+    if (currentTheme() === "system") syncTelegramChrome();
+  });
+
+  renderThemeSeg();
+  syncTelegramChrome();
 
   // ---------- страницы (нижняя навигация переключает их, без скролла по одной длинной странице) ----------
 

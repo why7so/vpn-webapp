@@ -3,10 +3,22 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <!-- Тема подставляется ДО загрузки стилей: иначе у выбравшего светлую
+       на долю секунды моргает тёмный экран. Значение — light | dark |
+       system, по умолчанию system. Скрипт инлайновый и без зависимостей
+       намеренно: любой внешний файл здесь означал бы ту же вспышку. -->
+  <script>
+    (function () {
+      var t = "system";
+      try { t = localStorage.getItem("jc-theme") || "system"; } catch (e) {}
+      if (t !== "light" && t !== "dark") t = "system";
+      document.documentElement.dataset.theme = t;
+    })();
+  </script>
   <title>Вход — Jay Connect</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <link rel="preload" as="image" href="assets/jay.png" />
-  <link rel="stylesheet" href="style.css?v=22" />
+  <link rel="stylesheet" href="style.css?v=23" />
   <style>
     /* Отдельная страница входа: собственный центрирующий контейнер, чтобы не
        зависеть от раскладки основного приложения. Токены/кнопки/инпут берём
