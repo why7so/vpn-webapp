@@ -199,11 +199,8 @@
     promoInput: document.getElementById("promo-input"),
     promoBtn: document.getElementById("promo-btn"),
 
-    devicesText: document.getElementById("devices-text"),
     devicesQtyLabel: document.getElementById("devices-qty-label"),
     devicesTrack: document.getElementById("devices-track"),
-    devicesOpenBtn: document.getElementById("devices-open-btn"),
-    devicesBack: document.getElementById("devices-back"),
     devicesList: document.getElementById("devices-list"),
     devicesCount: document.getElementById("devices-count"),
     devicesLimit: document.getElementById("devices-limit"),
@@ -1190,8 +1187,11 @@
 
   function renderDevices(devices) {
     cachedDevices = devices;
-    els.devicesText.textContent = devices.message;
+    // devices.message («максимум N устройств…») больше не показываем: то же
+    // самое говорит карточка-сводка над списком, и два текста об одном
+    // ограничении рядом только путали.
     renderDeviceButtons(devices);
+    renderDevicesPage(devices.devices || []);
   }
 
   async function purchaseDevices(qty, provider) {
@@ -1486,14 +1486,7 @@
   els.devicesResetCancel.onclick = () => showResetConfirm(false);
   els.devicesResetApply.onclick = resetAllDevices;
 
-  els.devicesOpenBtn.onclick = () => {
-    switchPage("devices");
-    showResetConfirm(false);
-    // Список мог устареть с прошлого открытия: устройство могло прийти за
-    // подпиской, пока человек ходил по другим страницам.
-    refreshDevicesPage().catch((e) => showToast(e.message, true));
-  };
-  els.devicesBack.onclick = () => switchPage("about-card");
+
 
   // ---------- админ-панель ----------
 
@@ -1837,7 +1830,7 @@
 
   // ---------- страницы (нижняя навигация переключает их, без скролла по одной длинной странице) ----------
 
-  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card", "devices", "admin"];
+  const PAGE_IDS = ["top", "connect-device", "plans-title", "about-card", "admin"];
   const pageEls = {};
   PAGE_IDS.forEach((id) => {
     pageEls[id] = document.querySelector('.page[data-page="' + id + '"]');
@@ -1865,13 +1858,7 @@
     }
   }
 
-  // Подстраницы, у которых нет своей вкладки в навбаре: пока мы на них,
-  // подсвеченной остаётся вкладка родителя — иначе индикатор повисает между
-  // кнопками и ни одна не выглядит активной.
-  const NAV_PARENT = { devices: "about-card" };
-
   function setActiveNav(targetId, skipAnim) {
-    targetId = NAV_PARENT[targetId] || targetId;
     if (targetId === currentNavTarget) return;
     currentNavTarget = targetId;
     els.navItems.forEach((btn) => {
@@ -2021,6 +2008,12 @@
       // заходами, кешировать её смысла нет.
       if (btn.dataset.target === "admin") {
         refreshAdmin().catch((e) => showToast(e.message, true));
+      }
+      // Список мог устареть: устройство могло прийти за подпиской, пока
+      // человек ходил по другим вкладкам.
+      if (btn.dataset.target === "connect-device") {
+        showResetConfirm(false);
+        refreshDevicesPage().catch((e) => showToast(e.message, true));
       }
     };
   });

@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=29" />
+  <link rel="stylesheet" href="style.css?v=30" />
 </head>
 <body>
   <div id="app">
@@ -148,8 +148,48 @@
           </div>
         </div>
 
-        <div class="section-title">Устройства</div>
-        <div class="card" id="devices-text">—</div>
+        <div class="section-title">Подключённые устройства</div>
+
+        <div class="card" id="devices-summary">
+          <div class="dev-summary-line">
+            <span class="dev-summary-count" id="devices-count">—</span>
+            <span class="dev-summary-limit" id="devices-limit">—</span>
+          </div>
+          <div class="email-hint" id="devices-summary-hint"></div>
+
+          <!-- Единственный настоящий отзыв доступа: меняет ключ, а с ним и
+               ссылку-подписку. Поэтому за кнопкой шаг подтверждения. -->
+          <button class="btn secondary btn-standalone device-reset-btn" id="devices-reset-btn">
+            Отключить все устройства
+          </button>
+          <div class="hidden" id="devices-reset-confirm">
+            <div class="email-hint devices-reset-warning">
+              Ссылка-подписка сменится, и доступ пропадёт сразу на всех устройствах,
+              включая это. На тех, что оставляете, подписку нужно будет добавить заново.
+            </div>
+            <div class="row">
+              <button class="btn secondary" id="devices-reset-cancel">Отмена</button>
+              <button class="btn danger" id="devices-reset-apply">Отключить всё</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="devices-list"></div>
+
+        <div class="card hidden" id="devices-empty">
+          <div class="email-hint">
+            Подписку пока никто не открывал. Устройство появится здесь после
+            того, как вы добавите ссылку в VPN-приложение.
+          </div>
+        </div>
+
+        <div class="card" id="devices-note">
+          <div class="email-hint">
+            Отключённое устройство теряет доступ не мгновенно: приложение
+            обновляет подписку примерно раз в час. Пока обновление не пришло,
+            уже загруженная конфигурация продолжает работать.
+          </div>
+        </div>
 
         <div class="section-title">Докупить устройства</div>
         <div class="card">
@@ -257,16 +297,6 @@
           </div>
         </div>
 
-        <div class="section-title">Устройства</div>
-        <div class="card" id="devices-entry-card">
-          <div class="email-hint">
-            Какие приложения пользуются вашей подпиской. Лишнее можно отключить.
-          </div>
-          <button class="btn secondary btn-standalone" id="devices-open-btn">
-            Управление устройствами
-          </button>
-        </div>
-
         <div class="section-title">Поддержка</div>
         <div class="card" id="support-card">
           <div class="about-support" id="about-support"></div>
@@ -281,51 +311,6 @@
         <button class="btn secondary btn-standalone hidden" id="browser-logout-btn">Выйти</button>
       </section>
       <!-- ===== Страница 5: Устройства (из раздела «Аккаунт») ===== -->
-      <section class="page hidden" id="page-devices" data-page="devices">
-        <button class="page-back" id="devices-back">← Аккаунт</button>
-        <div class="section-title">Устройства</div>
-
-        <div class="card" id="devices-summary">
-          <div class="dev-summary-line">
-            <span class="dev-summary-count" id="devices-count">—</span>
-            <span class="dev-summary-limit" id="devices-limit">—</span>
-          </div>
-          <div class="email-hint" id="devices-summary-hint"></div>
-
-          <!-- Единственный настоящий отзыв доступа: меняет ключ, а с ним и
-               ссылку-подписку. Поэтому за кнопкой шаг подтверждения. -->
-          <button class="btn secondary btn-standalone device-reset-btn" id="devices-reset-btn">
-            Отключить все устройства
-          </button>
-          <div class="hidden" id="devices-reset-confirm">
-            <div class="email-hint devices-reset-warning">
-              Ссылка-подписка сменится, и доступ пропадёт сразу на всех устройствах,
-              включая это. На тех, что оставляете, подписку нужно будет добавить заново.
-            </div>
-            <div class="row">
-              <button class="btn secondary" id="devices-reset-cancel">Отмена</button>
-              <button class="btn danger" id="devices-reset-apply">Отключить всё</button>
-            </div>
-          </div>
-        </div>
-
-        <div id="devices-list"></div>
-
-        <div class="card hidden" id="devices-empty">
-          <div class="email-hint">
-            Подписку пока никто не открывал. Устройство появится здесь после
-            того, как вы добавите ссылку в VPN-приложение.
-          </div>
-        </div>
-
-        <div class="card" id="devices-note">
-          <div class="email-hint">
-            Отключённое устройство теряет доступ не мгновенно: приложение
-            обновляет подписку примерно раз в час. Пока обновление не пришло,
-            уже загруженная конфигурация продолжает работать.
-          </div>
-        </div>
-      </section>
 
       <!-- ===== Страница 6: Админ-панель ===== -->
       <section class="page hidden" id="page-admin" data-page="admin">
@@ -479,6 +464,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=29"></script>
+  <script src="app.js?v=30"></script>
 </body>
 </html>
