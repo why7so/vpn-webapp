@@ -1207,6 +1207,11 @@ input:focus {
   border-top: 1px solid var(--glass-border);
   border-radius: 22px 22px 0 0;
   padding: 10px 18px max(20px, env(safe-area-inset-bottom));
+  /* Форма промокода — самая высокая шторка: шесть полей плюс кнопки. На
+     низком экране она вылезала бы за верх, поэтому ограничиваем и даём
+     прокрутку внутри. */
+  max-height: 88vh;
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   gap: 4px;

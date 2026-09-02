@@ -224,6 +224,10 @@
     adminPlanWrap: document.getElementById("admin-plan-wrap"),
     adminValueLabel: document.getElementById("admin-value-label"),
     adminPromoCreate: document.getElementById("admin-promo-create"),
+    adminPromoExpires: document.getElementById("admin-promo-expires"),
+    promoOpenBtn: document.getElementById("promo-open-btn"),
+    promoModal: document.getElementById("promo-modal"),
+    promoModalCancel: document.getElementById("promo-modal-cancel"),
     devicesResetBtn: document.getElementById("devices-reset-btn"),
     devicesResetConfirm: document.getElementById("devices-reset-confirm"),
     devicesResetCancel: document.getElementById("devices-reset-cancel"),
@@ -1661,6 +1665,18 @@
       const parts = [promoValueText(p)];
       parts.push(p.limit ? p.used + " из " + p.limit : "использован " + p.used + " раз");
       if (p.plan_code) parts.push("тариф " + p.plan_code);
+      if (p.expires_at) {
+        const d = new Date(p.expires_at);
+        // timeZone: UTC обязателен. Бэкенд хранит конец выбранного дня в UTC,
+        // и без указания зоны браузер переводил бы его в местную: введённое
+        // «31.12» показывалось как «01.01» — дата уезжала на сутки.
+        // Здесь это КАЛЕНДАРНАЯ дата, а не момент, и показывать её надо ровно
+        // такой, какой её задали. У «последний раз видели» и срока подписки
+        // наоборот — это моменты, там местная зона правильная.
+        if (!isNaN(d)) {
+          parts.push("до " + d.toLocaleDateString("ru-RU", { timeZone: "UTC" }));
+        }
+      }
       if (!p.active) parts.push("выключен");
       const sub = document.createElement("div");
       sub.className = "promo-sub";
@@ -1737,13 +1753,12 @@
           type: adminPromoType,
           value: Number(value),
           limit: els.adminPromoLimit.value.trim() || null,
+          expires_at: els.adminPromoExpires.value || null,
           plan_code: adminPromoType === "discount" ? els.adminPromoPlan.value || null : null,
         }),
       });
       showToast("Промокод " + code.toUpperCase() + " создан");
-      els.adminPromoCode.value = "";
-      els.adminPromoValue.value = "";
-      els.adminPromoLimit.value = "";
+      closePromoModal();
       await refreshAdmin();
     } catch (e) {
       showToast(e.message, true);
@@ -1761,6 +1776,30 @@
       showToast(e.message, true);
     }
   }
+
+  function openPromoModal() {
+    // Поля чистим при открытии, а не после создания: если форма упала с
+    // ошибкой, введённое должно остаться на месте, а не исчезнуть.
+    els.adminPromoCode.value = "";
+    els.adminPromoValue.value = "";
+    els.adminPromoLimit.value = "";
+    els.adminPromoExpires.value = "";
+    adminPromoType = "days";
+    renderAdminPromoForm();
+    els.promoModal.classList.remove("hidden");
+  }
+
+  function closePromoModal() {
+    els.promoModal.classList.add("hidden");
+  }
+
+  els.promoOpenBtn.onclick = openPromoModal;
+  els.promoModalCancel.onclick = closePromoModal;
+  // Тап по затемнению закрывает — как у остальных шторок. Проверка на сам
+  // оверлей нужна, чтобы клик внутри карточки не закрывал её.
+  els.promoModal.onclick = (e) => {
+    if (e.target === els.promoModal) closePromoModal();
+  };
 
   els.adminPromoType.onclick = (e) => {
     const btn = e.target.closest(".seg-btn");

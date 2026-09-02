@@ -333,38 +333,12 @@
         <div class="section-title">Ноды</div>
         <div id="admin-nodes"></div>
 
-        <div class="section-title">Новый промокод</div>
+        <div class="section-title">Промокоды</div>
         <div class="card">
-          <label class="field-label" for="admin-promo-code">Код</label>
-          <input class="input admin-code" id="admin-promo-code" placeholder="JAY2026" maxlength="32" />
-
-          <label class="field-label">Тип</label>
-          <div class="seg" id="admin-promo-type">
-            <button type="button" class="seg-btn active" data-type="days">Дни</button>
-            <button type="button" class="seg-btn" data-type="discount">Скидка %</button>
-            <button type="button" class="seg-btn" data-type="balance">На баланс</button>
-          </div>
-
-          <div class="row admin-row">
-            <div class="admin-field">
-              <label class="field-label" for="admin-promo-value" id="admin-value-label">Дней</label>
-              <input class="input" id="admin-promo-value" type="number" min="1" placeholder="30" />
-            </div>
-            <div class="admin-field">
-              <label class="field-label" for="admin-promo-limit">Активаций</label>
-              <input class="input" id="admin-promo-limit" type="number" min="1" placeholder="без лимита" />
-            </div>
-          </div>
-
-          <div class="hidden" id="admin-plan-wrap">
-            <label class="field-label" for="admin-promo-plan">Только для тарифа</label>
-            <select class="input" id="admin-promo-plan"></select>
-          </div>
-
-          <button class="btn btn-standalone" id="admin-promo-create">Создать промокод</button>
+          <div class="email-hint">Разовые акции: дни подписки, скидка или деньги на баланс.</div>
+          <button class="btn btn-standalone" id="promo-open-btn">Создать промокод</button>
         </div>
 
-        <div class="section-title">Промокоды</div>
         <div id="admin-promos"></div>
       </section>
 
@@ -406,6 +380,48 @@
     </div>
 
     <!-- Экран подтверждения перед оплатой: товар — цена — кнопка «Оплатить» -->
+    <!-- Создание промокода: шторка со стеклом, как остальные модалки -->
+    <div id="promo-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title">Новый промокод</div>
+
+        <label class="field-label" for="admin-promo-code">Код</label>
+        <input class="input admin-code" id="admin-promo-code" placeholder="JAY2026" maxlength="32" />
+
+        <label class="field-label">Тип</label>
+        <div class="seg" id="admin-promo-type">
+          <button type="button" class="seg-btn active" data-type="days">Дни</button>
+          <button type="button" class="seg-btn" data-type="discount">Скидка %</button>
+          <button type="button" class="seg-btn" data-type="balance">На баланс</button>
+        </div>
+
+        <div class="row admin-row">
+          <div class="admin-field">
+            <label class="field-label" for="admin-promo-value" id="admin-value-label">Дней</label>
+            <input class="input" id="admin-promo-value" type="number" min="1" placeholder="30" />
+          </div>
+          <div class="admin-field">
+            <label class="field-label" for="admin-promo-limit">Активаций</label>
+            <input class="input" id="admin-promo-limit" type="number" min="1" placeholder="без лимита" />
+          </div>
+        </div>
+
+        <label class="field-label" for="admin-promo-expires">Действует до</label>
+        <input class="input" id="admin-promo-expires" type="date" />
+
+        <div class="hidden" id="admin-plan-wrap">
+          <label class="field-label" for="admin-promo-plan">Только для тарифа</label>
+          <select class="input" id="admin-promo-plan"></select>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn secondary" id="promo-modal-cancel">Отмена</button>
+          <button class="btn" id="admin-promo-create">Создать</button>
+        </div>
+      </div>
+    </div>
+
     <div id="pay-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>
