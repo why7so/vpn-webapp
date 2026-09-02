@@ -149,6 +149,20 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Двойной тап больше не масштабирует страницу: в приложении это почти
+   всегда промах по кнопке, а не намерение приблизить. manipulation, а не
+   none — щипок двумя пальцами остаётся, и это важно: он единственный
+   способ разглядеть мелкое для тех, кому нужно. Запрещать зум целиком
+   через user-scalable=no нельзя по той же причине (плюс iOS его всё равно
+   игнорирует).
+
+   Значение задано на html и body: браузер берёт пересечение touch-action
+   по всей цепочке предков, поэтому одного корня хватает на всё внутри. */
+html,
+body {
+  touch-action: manipulation;
+}
+
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
