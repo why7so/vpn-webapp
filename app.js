@@ -1784,6 +1784,21 @@
   window.addEventListener("scroll", syncTopbarGlass, { passive: true });
   syncTopbarGlass();
 
+  // ---------- запрет масштабирования ----------
+
+  // Третий слой поверх viewport и touch-action. Safari на iOS игнорирует
+  // user-scalable=no с десятой версии, а щипок внутри WebView иногда
+  // проскакивает мимо touch-action — эти события ловят его напрямую.
+  // gesturestart нестандартный, есть только у WebKit, потому и нужен.
+  ["gesturestart", "gesturechange", "gestureend"].forEach((name) => {
+    document.addEventListener(name, (e) => e.preventDefault(), { passive: false });
+  });
+
+  // Ловушку на touchend «два касания ближе 300 мс — отменяем» не ставим
+  // намеренно: она не отличает двойной тап от двух быстрых нажатий по
+  // РАЗНЫМ кнопкам и глотала бы второй клик — например, при переключении
+  // вкладок подряд. Двойной тап и так закрыт через touch-action.
+
   // ---------- тема оформления ----------
 
   const THEME_KEY = "jc-theme";
