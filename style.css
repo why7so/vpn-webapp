@@ -1538,7 +1538,13 @@ input:focus {
   margin: 12px 0 6px;
 }
 
-.field-label:first-child {
+/* Подпись не отбивается сверху, когда отступ уже дал контейнер: первая в
+   карточке и первая в колонке .admin-field, у которой отбита сама строка.
+   Раньше правило было просто :first-child и ловило любую вложенную —
+   отсюда «Дней» вплотную к переключателю. Теперь оба случая названы явно,
+   и ни один не складывается с отступом родителя в двойной. */
+.card > .field-label:first-child,
+.admin-field > .field-label:first-child {
   margin-top: 0;
 }
 
@@ -1548,9 +1554,12 @@ input:focus {
   font-variant-numeric: tabular-nums;
 }
 
+/* Строка из двух полей: отступ сверху её собственный, потому что подписи
+   внутри уже сброшены как первые в своих колонках. */
 .admin-row {
   gap: 10px;
   align-items: flex-end;
+  margin-top: 12px;
 }
 
 .admin-field {
@@ -1598,6 +1607,7 @@ select.input:focus {
 .seg {
   display: flex;
   gap: 4px;
+  margin-bottom: 2px;
   background: var(--surface-2);
   border-radius: 999px;
   padding: 4px;
