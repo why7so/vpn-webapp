@@ -1310,7 +1310,8 @@ body.scroll-locked {
    переход снимается из JS, иначе карточка тянулась бы за пальцем с
    задержкой. */
 .modal-card {
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    padding-bottom 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .modal-title {

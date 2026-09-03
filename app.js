@@ -1842,14 +1842,32 @@
 
     const move = (y) => {
       const raw = y - startY;
-      // Вниз — один к одному. Вверх — с сопротивлением: шторка приходит
-      // снизу и уходит вниз, растягивать её вверх незачем, но жёсткий упор
-      // в ноль ощущается как будто жест не распознали. Формула
-      // асимптотическая: чем дальше тянут, тем туже, и дальше
-      // SHEET_PULL_MAX не уйдёт никогда.
-      delta =
-        raw >= 0 ? raw : -SHEET_PULL_MAX * (1 - SHEET_PULL_MAX / (SHEET_PULL_MAX - raw));
-      card.style.transform = "translateY(" + delta + "px)";
+
+      if (raw >= 0) {
+        // Вниз — один к одному: жест означает закрытие, и масштаб должен
+        // быть честным, иначе не понять, когда сработает.
+        delta = raw;
+        card.style.transform = "translateY(" + delta + "px)";
+        card.style.paddingBottom = "";
+        return;
+      }
+
+      // Вверх шторка РАСТЯГИВАЕТСЯ, а не приподнимается. Достаточно
+      // нарастить нижний отступ: карточка прижата к низу экрана, поэтому
+      // растёт она вверх сама, а низ остаётся на месте. Сдвиг через
+      // translateY здесь лишний — с ним низ отрывался от края и под
+      // шторкой зиял просвет.
+      //
+      // Именно padding, а не scaleY: растяжение масштабом исказило бы
+      // текст и кнопки.
+      //
+      // Сопротивление асимптотическое: чем дальше тянут, тем туже, и
+      // дальше SHEET_PULL_MAX не уйдёт никогда. Упор без рывка на границе.
+      const pull = SHEET_PULL_MAX * (1 - SHEET_PULL_MAX / (SHEET_PULL_MAX - raw));
+      delta = -pull;
+      card.style.transform = "";
+      card.style.paddingBottom =
+        "calc(max(20px, env(safe-area-inset-bottom)) + " + pull + "px)";
     };
 
     const finish = () => {
@@ -1857,6 +1875,7 @@
       dragging = false;
       card.style.transition = "";
       card.style.transform = "";
+      card.style.paddingBottom = "";
       if (delta > SHEET_CLOSE_PX) {
         // Закрываем через штатную «Отмену», а не просто прячем: у каждой
         // шторки свой сброс состояния, и повторять его здесь значило бы
