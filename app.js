@@ -1823,6 +1823,36 @@
   window.addEventListener("scroll", syncTopbarGlass, { passive: true });
   syncTopbarGlass();
 
+  // ---------- блокировка прокрутки под шторкой ----------
+
+  // Слежка за классом, а не вызовы в каждом месте открытия: модалок три,
+  // мест переключения семь, и следующая добавленная шторка про блокировку
+  // забыла бы. Наблюдатель ловит любой способ показать или скрыть.
+  let scrollLockOffset = 0;
+
+  function syncScrollLock() {
+    const open = document.querySelector(".modal-overlay:not(.hidden)") !== null;
+    const locked = document.body.classList.contains("scroll-locked");
+    if (open === locked) return;
+
+    if (open) {
+      scrollLockOffset = window.scrollY;
+      document.body.style.top = -scrollLockOffset + "px";
+      document.body.classList.add("scroll-locked");
+    } else {
+      document.body.classList.remove("scroll-locked");
+      document.body.style.top = "";
+      // Возвращаем ровно туда, где стояли: position: fixed сбрасывает
+      // прокрутку в ноль, и без этого закрытие шторки швыряло бы наверх.
+      window.scrollTo(0, scrollLockOffset);
+    }
+  }
+
+  const scrollLockObserver = new MutationObserver(syncScrollLock);
+  document.querySelectorAll(".modal-overlay").forEach((el) => {
+    scrollLockObserver.observe(el, { attributes: true, attributeFilter: ["class"] });
+  });
+
   // ---------- запрет масштабирования ----------
 
   // Третий слой поверх viewport и touch-action. Safari на iOS игнорирует
