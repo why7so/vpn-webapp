@@ -1828,6 +1828,8 @@
   // Порог закрытия. Меньше — шторка захлопывалась бы от случайного сдвига
   // пальца при попытке прокрутить содержимое.
   const SHEET_CLOSE_PX = 90;
+  // Насколько шторка поддаётся вверх. Дальше не уйдёт, сколько ни тяни.
+  const SHEET_PULL_MAX = 44;
 
   function makeSheetDraggable(overlay) {
     const card = overlay.querySelector(".modal-card");
@@ -1839,9 +1841,14 @@
     let dragging = false;
 
     const move = (y) => {
-      // Вверх не тянем: шторка приходит снизу и уходит вниз, растягивать её
-      // за верхнюю кромку не за чем.
-      delta = Math.max(0, y - startY);
+      const raw = y - startY;
+      // Вниз — один к одному. Вверх — с сопротивлением: шторка приходит
+      // снизу и уходит вниз, растягивать её вверх незачем, но жёсткий упор
+      // в ноль ощущается как будто жест не распознали. Формула
+      // асимптотическая: чем дальше тянут, тем туже, и дальше
+      // SHEET_PULL_MAX не уйдёт никогда.
+      delta =
+        raw >= 0 ? raw : -SHEET_PULL_MAX * (1 - SHEET_PULL_MAX / (SHEET_PULL_MAX - raw));
       card.style.transform = "translateY(" + delta + "px)";
     };
 
