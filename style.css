@@ -1274,14 +1274,43 @@ body.scroll-locked {
 /* Ручка шторки — как в нативных sheet'ах: показывает, что панель пришла
    снизу и закрывается вниз. Тянуть за неё нельзя, это подсказка формы, а
    не орган управления, поэтому она aria-hidden и не ловит касания. */
+/* Ручка шторки. Тянуть за неё можно — и это принципиально: элемент,
+   который выглядит как то, за что тянут, обязан тянуться. Раньше стояло
+   pointer-events: none, и подсказка обманывала.
+
+   Область захвата шире самой полоски: 4 пикселя пальцем не поймать,
+   поэтому вокруг невидимый отступ. */
 .sheet-handle {
+  width: 56px;
+  height: 22px;
+  margin: 0 auto 8px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: grab;
+  /* Свой жест: браузеру прокручивать здесь нечего. */
+  touch-action: none;
+}
+
+.sheet-handle::before {
+  content: "";
+  display: block;
   width: 36px;
   height: 4px;
   border-radius: 3px;
   background: var(--line-strong);
-  margin: 0 auto 14px;
-  flex-shrink: 0;
-  pointer-events: none;
+}
+
+.sheet-handle:active {
+  cursor: grabbing;
+}
+
+/* Возврат на место после незавершённого жеста. На время перетаскивания
+   переход снимается из JS, иначе карточка тянулась бы за пальцем с
+   задержкой. */
+.modal-card {
+  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .modal-title {

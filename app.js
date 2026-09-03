@@ -1823,6 +1823,85 @@
   window.addEventListener("scroll", syncTopbarGlass, { passive: true });
   syncTopbarGlass();
 
+  // ---------- перетаскивание шторки ----------
+
+  // Порог закрытия. Меньше — шторка захлопывалась бы от случайного сдвига
+  // пальца при попытке прокрутить содержимое.
+  const SHEET_CLOSE_PX = 90;
+
+  function makeSheetDraggable(overlay) {
+    const card = overlay.querySelector(".modal-card");
+    const handle = overlay.querySelector(".sheet-handle");
+    if (!card || !handle) return;
+
+    let startY = 0;
+    let delta = 0;
+    let dragging = false;
+
+    const move = (y) => {
+      // Вверх не тянем: шторка приходит снизу и уходит вниз, растягивать её
+      // за верхнюю кромку не за чем.
+      delta = Math.max(0, y - startY);
+      card.style.transform = "translateY(" + delta + "px)";
+    };
+
+    const finish = () => {
+      if (!dragging) return;
+      dragging = false;
+      card.style.transition = "";
+      card.style.transform = "";
+      if (delta > SHEET_CLOSE_PX) {
+        // Закрываем через штатную «Отмену», а не просто прячем: у каждой
+        // шторки свой сброс состояния, и повторять его здесь значило бы
+        // забыть при следующей.
+        const cancel = document.getElementById(overlay.id + "-cancel");
+        if (cancel) cancel.click();
+        else overlay.classList.add("hidden");
+      }
+    };
+
+    handle.addEventListener(
+      "touchstart",
+      (e) => {
+        if (e.touches.length !== 1) return;
+        startY = e.touches[0].clientY;
+        delta = 0;
+        dragging = true;
+        card.style.transition = "none";
+      },
+      { passive: true }
+    );
+
+    handle.addEventListener(
+      "touchmove",
+      (e) => {
+        if (!dragging) return;
+        e.preventDefault();
+        move(e.touches[0].clientY);
+      },
+      { passive: false }
+    );
+
+    handle.addEventListener("touchend", finish);
+    handle.addEventListener("touchcancel", finish);
+
+    // Мышью тоже — на десктопе кабинет открывают в браузере, и ручка там
+    // выглядит так же.
+    handle.addEventListener("mousedown", (e) => {
+      startY = e.clientY;
+      delta = 0;
+      dragging = true;
+      card.style.transition = "none";
+      e.preventDefault();
+    });
+    document.addEventListener("mousemove", (e) => {
+      if (dragging) move(e.clientY);
+    });
+    document.addEventListener("mouseup", finish);
+  }
+
+  document.querySelectorAll(".modal-overlay").forEach(makeSheetDraggable);
+
   // ---------- блокировка прокрутки под шторкой ----------
 
   // Слежка за классом, а не вызовы в каждом месте открытия: модалок три,
