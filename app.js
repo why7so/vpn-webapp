@@ -1597,7 +1597,7 @@
       name.textContent = n.name;
       const host = document.createElement("div");
       host.className = "node-host";
-      host.textContent = n.protocol + " · " + n.host;
+      host.textContent = n.host;
       body.appendChild(name);
       body.appendChild(host);
       head.appendChild(body);
@@ -1607,6 +1607,23 @@
       state.textContent = n.up ? "online" : n.state || "offline";
       head.appendChild(state);
       card.appendChild(head);
+
+      // Протоколы одной машины — это отдельные строки в базе с общими
+      // метриками, поэтому показываем их подписями внутри карточки, а не
+      // отдельными карточками: иначе один сервер выглядит несколькими, и
+      // его нагрузка кажется задвоенной.
+      if (n.protocols && n.protocols.length) {
+        const row = document.createElement("div");
+        row.className = "node-protos";
+        n.protocols.forEach((p) => {
+          const chip = document.createElement("span");
+          chip.className = "node-proto" + (p.up ? "" : " down");
+          chip.textContent = p.protocol + ":" + p.port;
+          chip.title = p.id;
+          row.appendChild(chip);
+        });
+        card.appendChild(row);
+      }
 
       if (n.up && n.stats_at) {
         // conns — абсолютное число, шкалы у него нет. Делим на 6 просто чтобы
