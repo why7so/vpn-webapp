@@ -1327,6 +1327,10 @@
   // id устройства, у которого сейчас открыто поле переименования. Хранится
   // отдельно от DOM: список перерисовывается целиком после каждого действия.
   let renamingDeviceId = null;
+  // Код, у которого сейчас раскрыто подтверждение удаления. Удаление
+  // необратимо и уносит с собой историю активаций, а промокоды лежат
+  // плотным списком — одного касания для этого мало.
+  let pendingPromoDelete = null;
 
   function renderDevicesPage(devices) {
     const list = els.devicesList;
@@ -1652,7 +1656,9 @@
 
     promos.forEach((p) => {
       const card = document.createElement("div");
-      card.className = "promo-card" + (p.active ? "" : " is-off");
+      const confirming = pendingPromoDelete === p.code;
+      card.className =
+        "promo-card" + (p.active ? "" : " is-off") + (confirming ? " is-confirming" : "");
 
       const body = document.createElement("div");
       body.className = "promo-body";
@@ -1685,12 +1691,42 @@
 
       card.appendChild(body);
 
-      if (p.active) {
-        const off = document.createElement("button");
-        off.className = "device-btn danger";
-        off.textContent = "Выключить";
-        off.onclick = () => disablePromo(p.code);
-        card.appendChild(off);
+      if (confirming) {
+        const warn = document.createElement("div");
+        warn.className = "email-hint";
+        warn.textContent =
+          "Удалить навсегда? Пропадёт и история активаций. " +
+          "Уже начисленные дни, баланс и скидки останутся у людей.";
+        card.appendChild(warn);
+
+        const row = document.createElement("div");
+        row.className = "promo-confirm-row";
+
+        const cancel = document.createElement("button");
+        cancel.className = "btn secondary";
+        cancel.textContent = "Отмена";
+        cancel.onclick = () => {
+          pendingPromoDelete = null;
+          renderAdminPromos(promos);
+        };
+        row.appendChild(cancel);
+
+        const apply = document.createElement("button");
+        apply.className = "btn danger";
+        apply.textContent = "Удалить";
+        apply.onclick = () => deletePromo(p.code);
+        row.appendChild(apply);
+
+        card.appendChild(row);
+      } else {
+        const del = document.createElement("button");
+        del.className = "device-btn danger";
+        del.textContent = "Удалить";
+        del.onclick = () => {
+          pendingPromoDelete = p.code;
+          renderAdminPromos(promos);
+        };
+        card.appendChild(del);
       }
 
       box.appendChild(card);
@@ -1767,10 +1803,17 @@
     }
   }
 
-  async function disablePromo(code) {
+  async function deletePromo(code) {
     try {
-      await api("/api/admin/promo/disable", { method: "POST", body: JSON.stringify({ code: code }) });
-      showToast("Промокод " + code + " выключен");
+      const res = await api("/api/admin/promo/delete", {
+        method: "POST",
+        body: JSON.stringify({ code: code }),
+      });
+      pendingPromoDelete = null;
+      const removed = res && res.redemptions_removed;
+      showToast(
+        "Промокод " + code + " удалён" + (removed ? " — стёрто активаций: " + removed : "")
+      );
       await refreshAdmin();
     } catch (e) {
       showToast(e.message, true);

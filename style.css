@@ -1700,6 +1700,23 @@ select.input:focus {
   min-width: 0;
 }
 
+/* Подтверждение удаления: карточка раскрывается в столбец. В строку рядом
+   с кодом две кнопки на узком экране уже не помещаются. */
+.promo-card.is-confirming {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.promo-confirm-row {
+  display: flex;
+  gap: 8px;
+}
+
+.promo-confirm-row .btn {
+  flex: 1;
+}
+
 .promo-code {
   font-size: 15px;
   font-weight: 800;
