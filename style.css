@@ -378,147 +378,6 @@ body {
   margin-top: 10px;
 }
 
-/* ---------- top bar ---------- */
-
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  /* Липкая: контент уезжает под неё, и стеклу есть что размывать. На
-     плоском фоне backdrop-filter не даёт ничего, кроме нагрузки, поэтому
-     раньше шапка стеклянной и не была. */
-  position: sticky;
-  top: 0;
-  z-index: 40;
-  /* Компенсируем боковые отступы body, чтобы подложка шла от края до края:
-     иначе под шапкой оставались бы две непрозрачные полоски по 14px. */
-  margin: -14px -14px 0;
-  padding: 16px 16px 10px;
-  /* В покое прозрачная — стекло появляется, только когда под ней что-то
-     проехало. Постоянная подложка поверх пустого фона выглядела бы
-     случайной полосой. */
-  background: transparent;
-  border-bottom: 1px solid transparent;
-  transition: background-color 0.25s ease, border-color 0.25s ease;
-}
-
-.topbar.is-stuck {
-  background: var(--glass-nav);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  border-bottom-color: var(--line);
-}
-
-/* Без backdrop-filter полупрозрачная шапка превратилась бы в мутное пятно
-   поверх текста — возвращаем непрозрачную подложку. */
-@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .topbar.is-stuck {
-    background: var(--glass-nav-solid);
-  }
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .topbar.is-stuck {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background: var(--glass-nav-solid);
-  }
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  color: var(--text);
-}
-
-.brand-mark {
-  color: var(--text);
-  flex-shrink: 0;
-}
-
-
-
-/* ---------- переключатель темы в шапке ---------- */
-
-.theme-toggle {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  background: var(--surface);
-  /* Обе иконки берут цвет отсюда: это один орган управления, и менять его
-     окраску при переключении не за что. Зелёный тут тоже не нужен — акцент
-     в приложении означает «активно/основное действие», а смена темы ни то,
-     ни другое. */
-  color: var(--text-dim);
-  cursor: pointer;
-  display: grid;
-  place-items: center;
-  transition: background-color 0.3s ease, border-color 0.3s ease, color 0.2s ease;
-}
-
-.theme-toggle:active {
-  transform: scale(0.94);
-}
-
-.theme-toggle:hover {
-  color: var(--text);
-}
-
-/* Обе иконки лежат друг на друге и переключаются прозрачностью с поворотом:
-   так смена темы читается как одно движение, а не как подмена картинки. */
-.theme-toggle .ic {
-  position: absolute;
-  width: 18px;
-  height: 18px;
-  transition: opacity 0.32s ease, transform 0.45s cubic-bezier(0.34, 1.4, 0.5, 1);
-}
-
-/* Иконка показывает, ЧТО БУДЕТ после нажатия: на светлой — луна, на тёмной
-   — солнце. Кнопка так читается как действие, а не как индикатор
-   состояния — состояние и без неё видно по всему экрану. */
-:root[data-theme="light"] .ic-sun,
-:root[data-theme="dark"] .ic-moon {
-  opacity: 0;
-  transform: rotate(-90deg) scale(0.4);
-}
-
-:root[data-theme="light"] .ic-moon,
-:root[data-theme="dark"] .ic-sun {
-  opacity: 1;
-  transform: none;
-}
-
-/* Системная тема: что показать, решает сама система — по тому же правилу
-   «иконка = следующее состояние». */
-:root[data-theme="system"] .ic-sun {
-  opacity: 0;
-  transform: rotate(-90deg) scale(0.4);
-}
-
-:root[data-theme="system"] .ic-moon {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root[data-theme="system"] .ic-sun {
-    opacity: 1;
-    transform: none;
-  }
-
-  :root[data-theme="system"] .ic-moon {
-    opacity: 0;
-    transform: rotate(90deg) scale(0.4);
-  }
-}
-
 /* ---------- generic card ---------- */
 
 .card {
@@ -568,17 +427,8 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Подпись под значением в мини-карточке: сейчас — тариф, к которому
-   привязана скидка. Отдельной строкой, а не внутри .mini-value: там
-   22px bold, и название тарифа вылезло бы за карточку. */
-.mini-hint {
-  font-size: 11px;
-  line-height: 1.25;
-  color: var(--text-dim);
-  margin-top: -2px;
-}
-
 .mini-btn {
+  position: relative;
   margin-top: auto;
   align-self: flex-start;
   background: none;
@@ -588,6 +438,20 @@ body {
   font-weight: 700;
   padding: 0;
   cursor: pointer;
+}
+
+/* Область нажатия до 44px по высоте, не трогая вид кнопки: текст в 13px
+   давал около 16px, и мимо промахивались. Тот же приём, что у ручки
+   шторки, — невидимый прямоугольник поверх, а не отступы, которые
+   растащили бы карточку. */
+.mini-btn::before {
+  content: "";
+  position: absolute;
+  left: -8px;
+  right: -8px;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
 }
 
 .mini-btn.ghost {
@@ -1098,19 +962,6 @@ input:focus {
 }
 
 /* ---------- about card ---------- */
-
-.about-name {
-  font-size: 15px;
-  font-weight: 700;
-  margin-bottom: 6px;
-}
-
-.about-desc {
-  font-size: 13px;
-  color: var(--text-dim);
-  line-height: 1.4;
-  margin-bottom: 8px;
-}
 
 .about-support {
   font-size: 13px;

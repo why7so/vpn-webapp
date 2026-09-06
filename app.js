@@ -152,10 +152,9 @@
 
 
     balance: document.getElementById("balance"),
-    discount: document.getElementById("discount"),
-    discountScope: document.getElementById("discount-scope"),
+    homeDevicesValue: document.getElementById("home-devices-value"),
+    homeDevicesBtn: document.getElementById("home-devices-btn"),
     topupShortcut: document.getElementById("topup-shortcut"),
-    promoShortcut: document.getElementById("promo-shortcut"),
 
     ringSvg: document.getElementById("ring-svg"),
     daysLeft: document.getElementById("days-left"),
@@ -211,8 +210,8 @@
     devicesBack: document.getElementById("devices-back"),
     devicesEntryHint: document.getElementById("devices-entry-hint"),
     navAdmin: document.getElementById("nav-admin"),
-    topbar: document.querySelector(".topbar"),
-    themeToggle: document.getElementById("theme-toggle"),
+    themeSeg: document.getElementById("theme-seg"),
+    themeHint: document.getElementById("theme-hint"),
     adminTiles: document.getElementById("admin-tiles"),
     adminNodes: document.getElementById("admin-nodes"),
     adminPromos: document.getElementById("admin-promos"),
@@ -242,8 +241,6 @@
     payModalCancel: document.getElementById("pay-modal-cancel"),
     payModalConfirm: document.getElementById("pay-modal-confirm"),
 
-    brandName: document.getElementById("brand-name"),
-    aboutName: document.getElementById("about-name"),
     aboutSupport: document.getElementById("about-support"),
     browserLogoutBtn: document.getElementById("browser-logout-btn"),
 
@@ -525,18 +522,6 @@
     // к данным закрыт на бэкенде, каждый админ-эндпоинт проверяет права сам.
     els.navAdmin.classList.toggle("hidden", !profile.is_admin);
 
-    els.discount.textContent = profile.discount_percent > 0 ? profile.discount_percent + "%" : "нет";
-
-    // Скидка может действовать только на один тариф — тогда так и пишем.
-    // Без этой строки «Скидка 80%» на главной обещала бы больше, чем есть.
-    const scopePlan = profile.discount_percent > 0 ? profile.discount_plan_code : null;
-    if (scopePlan) {
-      const plan = cachedPlans.filter((p) => p.code === scopePlan)[0];
-      els.discountScope.textContent = "только «" + (plan ? plan.title : scopePlan) + "»";
-      els.discountScope.classList.remove("hidden");
-    } else {
-      els.discountScope.classList.add("hidden");
-    }
 
     const sub = profile.subscription;
     const active = !!(sub && sub.active);
@@ -569,8 +554,6 @@
   }
 
   function renderAbout(profile) {
-    els.aboutName.textContent = profile.vpn_name || "VPN-сервис";
-    if (profile.vpn_name) els.brandName.textContent = profile.vpn_name;
     els.aboutSupport.textContent = profile.support_username
       ? "По всем вопросам пишите: @" + profile.support_username
       : "Поддержка временно недоступна.";
@@ -1209,6 +1192,10 @@
       limit > 0
         ? active + " " + deviceWord(active) + " из " + limit + " возможных одновременно."
         : active + " " + deviceWord(active) + ". Ограничения по подключениям нет.";
+
+    // То же число на главной. Считается здесь, а не отдельно, чтобы две
+    // цифры не разъехались: источник один и обновляются они вместе.
+    els.homeDevicesValue.textContent = limit > 0 ? active + " из " + limit : String(active);
   }
 
   async function purchaseDevices(qty, provider) {
@@ -1875,13 +1862,6 @@
   // пустого фона размывать нечего, и постоянная полоса читалась бы как
   // случайная. Порог в 4px, а не 0 — чтобы стекло не мигало от инерционного
   // «подпрыгивания» страницы на iOS.
-  function syncTopbarGlass() {
-    if (!els.topbar) return;
-    els.topbar.classList.toggle("is-stuck", window.scrollY > 4);
-  }
-
-  window.addEventListener("scroll", syncTopbarGlass, { passive: true });
-  syncTopbarGlass();
 
   // ---------- перетаскивание шторки ----------
 
@@ -2042,10 +2022,16 @@
   }
 
   // Что видит пользователь прямо сейчас: "system" сам по себе цветом не
-  // является, его надо разрешить через системную настройку.
+  // является, его надо разрешить.
+  //
+  // Внутри Telegram спрашиваем ИМЕННО Telegram, а не систему: у него своя
+  // настройка темы, независимая от темы телефона, и человек с тёмным
+  // Telegram на светлом Android ждёт тёмное приложение. Вне Telegram
+  // (кабинет в браузере) спрашивать некого — там системная настройка.
   function resolvedTheme() {
     const t = currentTheme();
     if (t !== "system") return t;
+    if (tg && tg.colorScheme) return tg.colorScheme === "dark" ? "dark" : "light";
     return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
   }
 
@@ -2063,6 +2049,20 @@
     }
   }
 
+  const THEME_HINTS = {
+    system: "Как в Telegram — меняется вместе с его настройкой.",
+    light: "Всегда светлая.",
+    dark: "Всегда тёмная.",
+  };
+
+  function renderThemeSeg() {
+    const value = currentTheme();
+    Array.prototype.forEach.call(els.themeSeg.children, (btn) => {
+      btn.classList.toggle("active", btn.dataset.themeValue === value);
+    });
+    els.themeHint.textContent = THEME_HINTS[value];
+  }
+
   function applyTheme(value) {
     document.documentElement.dataset.theme = value;
     try {
@@ -2072,6 +2072,7 @@
       // вернётся к системной. Ронять переключение из-за этого не за что.
     }
     syncTelegramChrome();
+    renderThemeSeg();
   }
 
   // Единственный орган управления темой. Переключает на противоположную
@@ -2079,6 +2080,14 @@
   // нажал на солнце, потому что хочет тёмную сейчас, а не «когда система
   // решит». Обратно в системную после этого не вернуться — она остаётся
   // значением по умолчанию для тех, кто тему не трогал.
+  // С главной — сразу на управление устройствами: карточка показывает
+  // число, кнопка ведёт туда, где с ним что-то можно сделать.
+  els.homeDevicesBtn.onclick = () => {
+    switchPage("devices");
+    showResetConfirm(false);
+    refreshDevicesPage().catch((e) => showToast(e.message, true));
+  };
+
   els.devicesOpenBtn.onclick = () => {
     switchPage("devices");
     showResetConfirm(false);
@@ -2092,16 +2101,28 @@
     if (cachedDevices) renderDevicesEntry(cachedDevices);
   };
 
-  els.themeToggle.onclick = () => {
-    applyTheme(resolvedTheme() === "dark" ? "light" : "dark");
+  els.themeSeg.onclick = (e) => {
+    const btn = e.target.closest(".seg-btn");
+    if (btn) applyTheme(btn.dataset.themeValue);
   };
 
-  // Системная тема может смениться, пока приложение открыто.
+  // Тема окружения может смениться, пока приложение открыто: и системная,
+  // и — что для нас важнее — тема самого Telegram.
   window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => {
     if (currentTheme() === "system") syncTelegramChrome();
   });
+  if (tg && tg.onEvent) {
+    try {
+      tg.onEvent("themeChanged", () => {
+        if (currentTheme() === "system") syncTelegramChrome();
+      });
+    } catch (e) {
+      /* старые клиенты Telegram события не шлют — останется системная тема */
+    }
+  }
 
   syncTelegramChrome();
+  renderThemeSeg();
 
   // ---------- страницы (нижняя навигация переключает их, без скролла по одной длинной странице) ----------
 
@@ -2302,8 +2323,6 @@
 
   els.manageBtn.onclick = () => switchPage("plans-title", els.plansTitle);
   els.topupShortcut.onclick = () => switchPage("plans-title", els.topupPresets);
-  els.promoShortcut.onclick = () => switchPage("plans-title", els.promoTitle);
-
   function initialPageFromHash() {
     const params = new URLSearchParams(window.location.search);
     const pageParam = params.get("page");
