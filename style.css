@@ -401,6 +401,29 @@ body {
   animation: scrim-in 0.22s ease;
 }
 
+/* Класс держится ровно столько, сколько идёт анимация, и снимается вместе с
+   добавлением .hidden — см. closeSheet в app.js. */
+@keyframes sheet-out {
+  to {
+    transform: translateY(18%);
+    opacity: 0;
+  }
+}
+
+@keyframes scrim-out {
+  to {
+    opacity: 0;
+  }
+}
+
+.modal-overlay.is-closing {
+  animation: scrim-out 0.2s ease forwards;
+}
+
+.modal-overlay.is-closing .modal-card {
+  animation: sheet-out 0.24s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
 .modal-overlay:not(.hidden) .modal-card {
   animation: sheet-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -417,7 +440,9 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .modal-overlay:not(.hidden),
-  .modal-overlay:not(.hidden) .modal-card {
+  .modal-overlay:not(.hidden) .modal-card,
+  .modal-overlay.is-closing,
+  .modal-overlay.is-closing .modal-card {
     animation: none;
   }
 
@@ -460,6 +485,27 @@ body {
   background: var(--surface);
   border-radius: var(--r-lg);
   padding: 16px;
+}
+
+/* Карточка, у которой всё содержимое по центру: счётчик устройств и
+   единственная кнопка под ним. Кнопка внутри такой карточки перестаёт
+   растягиваться во всю ширину — по центру она читается как одно действие,
+   а не как полоса. */
+.centered-card {
+  text-align: center;
+}
+
+.centered-card .btn-standalone {
+  display: inline-flex;
+  width: auto;
+  min-width: 60%;
+  justify-content: center;
+}
+
+.dev-entry-count {
+  font-size: 14px;
+  color: var(--text);
+  margin-bottom: 4px;
 }
 
 .card-title {
@@ -733,26 +779,52 @@ body {
   color: var(--danger);
 }
 
-.device-btn.accent {
-  background: var(--accent);
-  color: var(--accent-ink);
+/* Значок вместо слова. «Имя» и «Отключить» рядом читались как два текста
+   одинакового веса, и глаз каждый раз разбирал, где какое; карандаш и крест
+   различаются формой, а не чтением. Размер — 36px, вместе с невидимым полем
+   ниже даёт цель нажатия по правилу в 44pt. */
+.device-icon-btn {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: color 0.2s ease, background-color 0.2s ease, transform 0.16s ease;
+}
+
+.device-icon-btn::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
+.device-icon-btn:active {
+  transform: scale(0.92);
+}
+
+.device-icon-btn.danger {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.device-icon-btn.accent {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.device-icon-btn svg {
+  width: 17px;
+  height: 17px;
 }
 
 .device-btn:active {
   opacity: 0.8;
-}
-
-/* Переименование раскрывается прямо в карточке — модалка ради одного поля
-   была бы тяжелее самой задачи. */
-.device-rename {
-  display: flex;
-  gap: 8px;
-  margin-top: 10px;
-}
-
-.device-rename input {
-  flex: 1;
-  min-width: 0;
 }
 
 /* ---------- subscription url ---------- */
@@ -1106,7 +1178,10 @@ input:focus {
   max-width: 90vw;
   text-align: center;
   box-shadow: var(--shadow-pop);
-  z-index: 100;
+  /* Выше шторок (200): ошибки чаще всего возникают именно в них — занятая
+     почта, неверный код, — и тост под шторкой выглядел как «нажал, и ничего
+     не произошло». */
+  z-index: 300;
 }
 
 /* ---------- модалка подтверждения оплаты (товар-цена-кнопка «Оплатить») ---------- */
@@ -1620,11 +1695,29 @@ select.input:focus {
   border-radius: 999px;
   cursor: pointer;
   white-space: nowrap;
+  /* Переключение мгновенным быть не должно: активная кнопка меняет и фон, и
+     цвет текста разом, и без перехода это читается как подмена картинки, а
+     не как ответ на нажатие. */
+  transition: background-color 0.22s ease, color 0.22s ease, transform 0.16s ease;
+}
+
+.seg-btn:active {
+  transform: scale(0.96);
 }
 
 .seg-btn.active {
   background: var(--accent);
   color: var(--accent-ink);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .seg-btn {
+    transition: none;
+  }
+
+  .seg-btn:active {
+    transform: none;
+  }
 }
 
 /* ---------- список промокодов ---------- */

@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=44" />
+  <link rel="stylesheet" href="style.css?v=45" />
 </head>
 <body>
   <div id="app">
@@ -82,6 +82,12 @@
           У вас пока нет активной подписки — сначала оформите её в разделе «Тарифы».
         </div>
 
+        <!-- Выбор платформы стоит ДО инструкции: он определяет, что в ней
+             написано, и прятать его за кнопкой «Другое устройство?» внизу
+             означало показать чужую инструкцию и предложить исправить это
+             после прочтения. Своя платформа выбрана заранее. -->
+        <div class="seg" id="connect-platform-tabs"></div>
+
         <div class="card connect-app-select hidden" id="connect-app-select"></div>
 
         <div class="card connect-steps" id="connect-steps-block">
@@ -110,8 +116,6 @@
           </div>
         </div>
 
-        <button class="btn secondary btn-standalone" id="connect-other-device-btn">Другое устройство?</button>
-        <div class="chip-row hidden" id="connect-platform-chips"></div>
 
         <div id="sub-url-block" class="card hidden">
           <div class="card-title">Ссылка-подписка</div>
@@ -123,8 +127,8 @@
         </div>
 
         <div class="section-title">Устройства</div>
-        <div class="card" id="devices-entry-card">
-          <div class="email-hint" id="devices-entry-hint">—</div>
+        <div class="card centered-card" id="devices-entry-card">
+          <div class="dev-entry-count" id="devices-entry-hint">—</div>
           <button class="btn secondary btn-standalone" id="devices-open-btn">
             Управление устройствами
           </button>
@@ -194,7 +198,6 @@
             <button type="button" class="seg-btn" data-theme-value="light">Светлая</button>
             <button type="button" class="seg-btn" data-theme-value="dark">Тёмная</button>
           </div>
-          <div class="email-hint" id="theme-hint"></div>
         </div>
 
         <!-- Привязка Telegram: для аккаунтов, зарегистрированных по почте.
@@ -231,16 +234,15 @@
         <button class="page-back" id="devices-back">← Устройства</button>
         <div class="section-title">Устройства</div>
 
-        <div class="card" id="devices-summary">
+        <div class="card centered-card" id="devices-summary">
           <div class="dev-summary-line">
             <span class="dev-summary-count" id="devices-count">—</span>
             <span class="dev-summary-limit" id="devices-limit">—</span>
           </div>
-          <div class="email-hint" id="devices-summary-hint"></div>
-
           <!-- Единственный настоящий отзыв доступа: меняет ключ, а с ним и
-               ссылку-подписку. Поэтому за кнопкой шаг подтверждения. -->
-          <button class="btn secondary btn-standalone device-reset-btn" id="devices-reset-btn">
+               ссылку-подписку. Поэтому за кнопкой шаг подтверждения. Красная
+               и по центру: это самое разрушительное действие на странице. -->
+          <button class="btn danger btn-standalone device-reset-btn" id="devices-reset-btn">
             Отключить все устройства
           </button>
           <div class="hidden" id="devices-reset-confirm">
@@ -378,10 +380,35 @@
             placeholder="000000"
           />
           <button class="btn btn-standalone" id="email-code-confirm">Подтвердить</button>
-          <button class="btn secondary btn-standalone" id="email-code-cancel">Отмена</button>
         </div>
+      </div>
+    </div>
 
-        <button class="btn secondary btn-standalone" id="email-modal-close">Закрыть</button>
+    <!-- Переименование и отключение — в шторках, а не прямо в карточке:
+         в списке из шести устройств форма, раскрывающаяся внутри строки,
+         сдвигает всё остальное, и до кнопки «ОК» приходится доскроллить. -->
+    <div id="device-rename-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title">Переименовать устройство</div>
+        <div class="email-hint">Название видно только вам, на подключение не влияет.</div>
+        <input class="input" id="device-rename-input" maxlength="40" />
+        <div class="row">
+          <button class="btn secondary" id="device-rename-cancel">Отмена</button>
+          <button class="btn" id="device-rename-save">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="device-block-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title" id="device-block-title">Отключить устройство</div>
+        <div class="email-hint" id="device-block-text"></div>
+        <div class="row">
+          <button class="btn secondary" id="device-block-cancel">Отмена</button>
+          <button class="btn danger" id="device-block-apply">Отключить</button>
+        </div>
       </div>
     </div>
 
@@ -495,6 +522,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=44"></script>
+  <script src="app.js?v=45"></script>
 </body>
 </html>

@@ -172,8 +172,7 @@
     connectStepAppName: document.getElementById("connect-step-app-name"),
     connectStoreBtn: document.getElementById("connect-store-btn"),
     connectAddSubBtn: document.getElementById("connect-add-sub-btn"),
-    connectOtherDeviceBtn: document.getElementById("connect-other-device-btn"),
-    connectPlatformChips: document.getElementById("connect-platform-chips"),
+    connectPlatformTabs: document.getElementById("connect-platform-tabs"),
 
     plansTitle: document.getElementById("plans-title"),
     plansList: document.getElementById("plans-list"),
@@ -203,7 +202,15 @@
     devicesList: document.getElementById("devices-list"),
     devicesCount: document.getElementById("devices-count"),
     devicesLimit: document.getElementById("devices-limit"),
-    devicesSummaryHint: document.getElementById("devices-summary-hint"),
+    deviceRenameModal: document.getElementById("device-rename-modal"),
+    deviceRenameInput: document.getElementById("device-rename-input"),
+    deviceRenameSave: document.getElementById("device-rename-save"),
+    deviceRenameCancel: document.getElementById("device-rename-cancel"),
+    deviceBlockModal: document.getElementById("device-block-modal"),
+    deviceBlockTitle: document.getElementById("device-block-title"),
+    deviceBlockText: document.getElementById("device-block-text"),
+    deviceBlockApply: document.getElementById("device-block-apply"),
+    deviceBlockCancel: document.getElementById("device-block-cancel"),
     devicesEmpty: document.getElementById("devices-empty"),
     devicesNote: document.getElementById("devices-note"),
     devicesOpenBtn: document.getElementById("devices-open-btn"),
@@ -211,7 +218,6 @@
     devicesEntryHint: document.getElementById("devices-entry-hint"),
     navAdmin: document.getElementById("nav-admin"),
     themeSeg: document.getElementById("theme-seg"),
-    themeHint: document.getElementById("theme-hint"),
     adminTiles: document.getElementById("admin-tiles"),
     adminNodes: document.getElementById("admin-nodes"),
     adminPromos: document.getElementById("admin-promos"),
@@ -252,7 +258,6 @@
     accountEmailValue: document.getElementById("account-email-value"),
     accountEmailBtn: document.getElementById("account-email-btn"),
     emailModal: document.getElementById("email-modal"),
-    emailModalClose: document.getElementById("email-modal-close"),
     emailHint: document.getElementById("email-hint"),
     emailBound: document.getElementById("email-bound"),
     emailBoundValue: document.getElementById("email-bound-value"),
@@ -264,7 +269,6 @@
     emailCodeHint: document.getElementById("email-code-hint"),
     emailCodeInput: document.getElementById("email-code-input"),
     emailCodeConfirm: document.getElementById("email-code-confirm"),
-    emailCodeCancel: document.getElementById("email-code-cancel"),
 
     bottomNav: document.getElementById("bottom-nav-wrap"),
     navItems: document.querySelectorAll(".nav-item"),
@@ -411,6 +415,7 @@
 
   function renderConnectDevice() {
     if (!connectPlatform) connectPlatform = detectPlatform();
+    renderPlatformTabs();
     const appIds = PLATFORM_APPS[connectPlatform] || PLATFORM_APPS.other;
 
     if (!connectSelectedApp[connectPlatform] || appIds.indexOf(connectSelectedApp[connectPlatform]) === -1) {
@@ -492,25 +497,25 @@
     };
   }
 
-  els.connectOtherDeviceBtn.onclick = () => {
-    if (!els.connectPlatformChips.classList.contains("hidden")) {
-      els.connectPlatformChips.classList.add("hidden");
-      return;
-    }
-    els.connectPlatformChips.classList.remove("hidden");
-    els.connectPlatformChips.innerHTML = "";
+  // Платформа выбирается ДО инструкции и всегда на виду. Раньше выбор
+  // прятался за кнопкой «Другое устройство?» под шагами: человеку сначала
+  // показывали инструкцию для угаданной платформы, а возможность исправить
+  // предлагали после того, как он её прочитал.
+  function renderPlatformTabs() {
+    els.connectPlatformTabs.innerHTML = "";
     Object.keys(PLATFORM_LABELS).forEach((id) => {
-      const chip = document.createElement("button");
-      chip.className = "chip" + (id === connectPlatform ? " active" : "");
-      chip.textContent = PLATFORM_LABELS[id];
-      chip.onclick = () => {
+      const tab = document.createElement("button");
+      tab.type = "button";
+      tab.className = "seg-btn" + (id === connectPlatform ? " active" : "");
+      tab.textContent = PLATFORM_LABELS[id];
+      tab.onclick = () => {
+        if (id === connectPlatform) return;
         connectPlatform = id;
-        els.connectPlatformChips.classList.add("hidden");
         renderConnectDevice();
       };
-      els.connectPlatformChips.appendChild(chip);
+      els.connectPlatformTabs.appendChild(tab);
     });
-  };
+  }
 
   // ---------- profile / subscription ----------
 
@@ -699,7 +704,7 @@
   }
 
   function closeEmailModal() {
-    els.emailModal.classList.add("hidden");
+    closeSheet(els.emailModal);
     // Незаконченный ввод кода не тащим в следующее открытие: код одноразовый
     // и к тому времени, скорее всего, протухнет.
     els.emailCodeForm.classList.add("hidden");
@@ -708,7 +713,6 @@
 
   els.accountEmailBtn.onclick = openEmailModal;
   els.accountEmailValue.onclick = openEmailModal;
-  els.emailModalClose.onclick = closeEmailModal;
   els.emailModal.onclick = (e) => {
     if (e.target === els.emailModal) closeEmailModal();
   };
@@ -784,11 +788,6 @@
   els.emailCodeConfirm.onclick = confirmBindCode;
   els.emailUnbindBtn.onclick = unbindEmail;
   els.tgLinkBtn.onclick = startTelegramLink;
-  els.emailCodeCancel.onclick = () => {
-    els.emailCodeForm.classList.add("hidden");
-    els.emailBindForm.classList.remove("hidden");
-    els.emailCodeInput.value = "";
-  };
   els.emailBindInput.onkeydown = (e) => {
     if (e.key === "Enter") requestBindCode();
   };
@@ -830,7 +829,7 @@
 
   function closePayConfirm() {
     pendingPurchase = null;
-    els.payModal.classList.add("hidden");
+    closeSheet(els.payModal);
   }
 
   els.payModalCancel.onclick = closePayConfirm;
@@ -993,7 +992,7 @@
 
   function closePlanModal() {
     planModalState = null;
-    els.planModal.classList.add("hidden");
+    closeSheet(els.planModal);
   }
 
   els.planModalCancel.onclick = closePlanModal;
@@ -1226,8 +1225,8 @@
     const limit = devices.device_limit;
     els.devicesEntryHint.textContent =
       limit > 0
-        ? active + " " + deviceWord(active) + " из " + limit + " возможных одновременно."
-        : active + " " + deviceWord(active) + ". Ограничения по подключениям нет.";
+        ? "Подключено " + active + " из " + limit + " " + deviceWord(limit)
+        : "Подключено " + active + " " + deviceWord(active);
 
     // То же число на главной. Считается здесь, а не отдельно, чтобы две
     // цифры не разъехались: источник один и обновляются они вместе.
@@ -1356,11 +1355,66 @@
 
   // id устройства, у которого сейчас открыто поле переименования. Хранится
   // отдельно от DOM: список перерисовывается целиком после каждого действия.
-  let renamingDeviceId = null;
   // Код, у которого сейчас раскрыто подтверждение удаления. Удаление
   // необратимо и уносит с собой историю активаций, а промокоды лежат
   // плотным списком — одного касания для этого мало.
   let pendingPromoDelete = null;
+
+  const ICON_PENCIL =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3z"></path></svg>';
+  const ICON_CROSS =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+    'stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
+  const ICON_CHECK =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+    'stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"></path></svg>';
+
+  // Какое устройство сейчас в шторке. Держим id, а не сам объект: список
+  // между открытием и сохранением может перерисоваться.
+  let sheetDeviceId = null;
+
+  function openRenameModal(device) {
+    sheetDeviceId = device.id;
+    els.deviceRenameInput.value = device.custom_name || "";
+    els.deviceRenameInput.placeholder = device.auto_name;
+    els.deviceRenameModal.classList.remove("hidden");
+    // Фокус после кадра: до появления шторки поле ещё не на экране, и
+    // клавиатура на iOS открывалась поверх пустого места.
+    requestAnimationFrame(() => els.deviceRenameInput.focus());
+  }
+
+  function openBlockModal(device) {
+    sheetDeviceId = device.id;
+    els.deviceBlockText.textContent =
+      "«" + device.name + "» потеряет доступ при следующем обновлении подписки. " +
+      "Включить обратно можно здесь же в течение суток.";
+    els.deviceBlockModal.classList.remove("hidden");
+  }
+
+  els.deviceRenameCancel.onclick = () => closeSheet(els.deviceRenameModal);
+  els.deviceRenameModal.onclick = (e) => {
+    if (e.target === els.deviceRenameModal) closeSheet(els.deviceRenameModal);
+  };
+  els.deviceRenameSave.onclick = () => {
+    const id = sheetDeviceId;
+    closeSheet(els.deviceRenameModal);
+    if (id) renameDevice(id, els.deviceRenameInput.value);
+  };
+  els.deviceRenameInput.onkeydown = (e) => {
+    if (e.key === "Enter") els.deviceRenameSave.onclick();
+  };
+
+  els.deviceBlockCancel.onclick = () => closeSheet(els.deviceBlockModal);
+  els.deviceBlockModal.onclick = (e) => {
+    if (e.target === els.deviceBlockModal) closeSheet(els.deviceBlockModal);
+  };
+  els.deviceBlockApply.onclick = () => {
+    const id = sheetDeviceId;
+    closeSheet(els.deviceBlockModal);
+    if (id) setDeviceBlocked(id, true);
+  };
 
   function renderDevicesPage(devices) {
     const list = els.devicesList;
@@ -1371,22 +1425,13 @@
     // считает другое — одновременные соединения. Смешивать их в одной строке
     // («4 из 3 одновременно») нельзя: получается, что лимит нарушен, хотя
     // одновременно работающих могло быть и два.
+    // Раньше под счётчиком стояли два абзаца про то, как считается лимит и
+    // сколько устройств отключено. Читать их приходилось каждый раз, а
+    // отвечали они на вопрос, который задают один раз в жизни.
     const active = devices.filter((d) => !d.blocked).length;
-    els.devicesCount.textContent = active;
-    els.devicesLimit.textContent = deviceWord(active);
-
     const limit = cachedDevices ? cachedDevices.device_limit : 0;
-    const blocked = devices.length - active;
-    const hint = [];
-    hint.push(
-      limit > 0
-        ? "Одновременно работают не больше " + limit + " — остальные подключатся, когда освободится место."
-        : "Ограничения по числу подключений нет."
-    );
-    if (blocked) {
-      hint.push("Отключено: " + blocked + " — можно включить обратно.");
-    }
-    els.devicesSummaryHint.textContent = hint.join(" ");
+    els.devicesCount.textContent = limit > 0 ? active + " из " + limit : String(active);
+    els.devicesLimit.textContent = deviceWord(limit > 0 ? limit : active);
 
     els.devicesEmpty.classList.toggle("hidden", devices.length > 0);
     els.devicesNote.classList.toggle("hidden", devices.length === 0);
@@ -1427,49 +1472,30 @@
         body.appendChild(badge);
       }
 
-      if (renamingDeviceId === device.id) {
-        const form = document.createElement("div");
-        form.className = "device-rename";
-        const input = document.createElement("input");
-        input.className = "input";
-        input.maxLength = 40;
-        input.value = device.custom_name || "";
-        input.placeholder = device.auto_name;
-        const save = document.createElement("button");
-        save.className = "device-btn accent";
-        save.textContent = "ОК";
-        save.onclick = () => renameDevice(device.id, input.value);
-        input.onkeydown = (e) => {
-          if (e.key === "Enter") renameDevice(device.id, input.value);
-          if (e.key === "Escape") {
-            renamingDeviceId = null;
-            renderDevicesPage(devices);
-          }
-        };
-        form.appendChild(input);
-        form.appendChild(save);
-        body.appendChild(form);
-        setTimeout(() => input.focus(), 0);
-      }
-
       card.appendChild(body);
 
       const actions = document.createElement("div");
       actions.className = "device-actions";
 
       const renameBtn = document.createElement("button");
-      renameBtn.className = "device-btn";
-      renameBtn.textContent = renamingDeviceId === device.id ? "Отмена" : "Имя";
-      renameBtn.onclick = () => {
-        renamingDeviceId = renamingDeviceId === device.id ? null : device.id;
-        renderDevicesPage(devices);
-      };
+      renameBtn.className = "device-icon-btn";
+      renameBtn.title = "Переименовать";
+      renameBtn.setAttribute("aria-label", "Переименовать");
+      renameBtn.innerHTML = ICON_PENCIL;
+      renameBtn.onclick = () => openRenameModal(device);
       actions.appendChild(renameBtn);
 
       const toggle = document.createElement("button");
-      toggle.className = "device-btn" + (device.blocked ? " accent" : " danger");
-      toggle.textContent = device.blocked ? "Включить" : "Отключить";
-      toggle.onclick = () => setDeviceBlocked(device.id, !device.blocked);
+      toggle.className = "device-icon-btn" + (device.blocked ? " accent" : " danger");
+      toggle.title = device.blocked ? "Включить" : "Отключить";
+      toggle.setAttribute("aria-label", toggle.title);
+      toggle.innerHTML = device.blocked ? ICON_CHECK : ICON_CROSS;
+      toggle.onclick = () => {
+        // Включение обратно не спрашивает подтверждения: оно ничего не
+        // отнимает. Отключение спрашивает — человек лишается доступа.
+        if (device.blocked) setDeviceBlocked(device.id, false);
+        else openBlockModal(device);
+      };
       actions.appendChild(toggle);
 
       card.appendChild(actions);
@@ -1490,7 +1516,6 @@
         body: JSON.stringify({ device_id: deviceId, blocked: blocked }),
       });
       showToast(blocked ? "Отключено — конфигурация пропадёт в течение часа" : "Включено обратно");
-      renamingDeviceId = null;
       await refreshDevicesPage();
     } catch (e) {
       showToast(e.message, true);
@@ -1503,7 +1528,6 @@
         method: "POST",
         body: JSON.stringify({ device_id: deviceId, name: name }),
       });
-      renamingDeviceId = null;
       await refreshDevicesPage();
     } catch (e) {
       showToast(e.message, true);
@@ -1521,7 +1545,6 @@
       await api("/api/devices/reset", { method: "POST", body: JSON.stringify({}) });
       showToast("Все устройства отключены — ссылка обновлена");
       showResetConfirm(false);
-      renamingDeviceId = null;
       // Профиль тоже: ссылка-подписка сменилась, а её показывает страница
       // подключения — иначе там осталась бы мёртвая.
       await refreshProfile();
@@ -1912,7 +1935,7 @@
   }
 
   function closePromoModal() {
-    els.promoModal.classList.add("hidden");
+    closeSheet(els.promoModal);
   }
 
   els.promoOpenBtn.onclick = openPromoModal;
@@ -1937,6 +1960,27 @@
   // пустого фона размывать нечего, и постоянная полоса читалась бы как
   // случайная. Порог в 4px, а не 0 — чтобы стекло не мигало от инерционного
   // «подпрыгивания» страницы на iOS.
+
+  // Шторка открывалась движением, а закрывалась мгновенно — и любое
+  // закрытие, включая касание пустой области, выглядело сбоем, а не
+  // ответом на действие. Класс держится ровно на время анимации.
+  function closeSheet(overlay, after) {
+    if (!overlay || overlay.classList.contains("hidden")) return;
+    overlay.classList.add("is-closing");
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      overlay.classList.remove("is-closing");
+      overlay.classList.add("hidden");
+      if (after) after();
+    };
+    const card = overlay.querySelector(".modal-card");
+    if (card) card.addEventListener("animationend", finish, { once: true });
+    // Подстраховка: при prefers-reduced-motion анимации нет вовсе, и
+    // animationend не придёт — без таймера шторка осталась бы висеть.
+    setTimeout(finish, 280);
+  }
 
   // ---------- перетаскивание шторки ----------
 
@@ -2124,18 +2168,13 @@
     }
   }
 
-  const THEME_HINTS = {
-    system: "Как в Telegram — меняется вместе с его настройкой.",
-    light: "Всегда светлая.",
-    dark: "Всегда тёмная.",
-  };
-
+  // Подписи под выбором больше нет: «Светлая», «Тёмная» и «Как в Telegram»
+  // объясняют себя сами, а строка пояснения под ними только добавляла текста.
   function renderThemeSeg() {
     const value = currentTheme();
     Array.prototype.forEach.call(els.themeSeg.children, (btn) => {
       btn.classList.toggle("active", btn.dataset.themeValue === value);
     });
-    els.themeHint.textContent = THEME_HINTS[value];
   }
 
   function applyTheme(value) {
