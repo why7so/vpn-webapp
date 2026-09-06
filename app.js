@@ -1356,16 +1356,24 @@
   // плотным списком — одного касания для этого мало.
   let pendingPromoDelete = null;
 
+  // Значки заливкой, а не обводкой. fill="currentColor" во всех трёх —
+  // цвет приходит от кнопки и меняется вместе с темой; прибитый оттенок
+  // (в исходной галочке стоял #43A047) в светлой теме разошёлся бы с
+  // остальным акцентом, у которого свои значения в каждой теме.
   const ICON_PENCIL =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
-    'stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M4 20h4L19 9a2.1 2.1 0 0 0-3-3L5 17v3z"></path></svg>';
-  const ICON_CROSS =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-    'stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
+    '<svg viewBox="0 0 24 24" fill="currentColor">' +
+    '<path d="M 19.171875 2 C 18.448125 2 17.724375 2.275625 17.171875 2.828125 ' +
+    'L 16 4 L 20 8 L 21.171875 6.828125 C 22.275875 5.724125 22.275875 3.933125 ' +
+    '21.171875 2.828125 C 20.619375 2.275625 19.895625 2 19.171875 2 z ' +
+    'M 14.5 5.5 L 3 17 L 3 21 L 7 21 L 18.5 9.5 L 14.5 5.5 z"></path></svg>';
   const ICON_CHECK =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
-    'stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5 5L20 6.5"></path></svg>';
+    '<svg viewBox="0 0 48 48" fill="currentColor">' +
+    '<path d="M40.6 12.1L17 35.7 7.4 26.1 4.6 29 17 41.3 43.4 14.9z"></path></svg>';
+  // Крест оставлен обводкой, но потолщён: рядом с залитыми карандашом и
+  // галочкой тонкая линия читалась бы легче их и сбивала бы вес ряда.
+  const ICON_CROSS =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" ' +
+    'stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
 
   // Какое устройство сейчас в шторке. Держим id, а не сам объект: список
   // между открытием и сохранением может перерисоваться.
