@@ -416,16 +416,16 @@ body {
   }
 }
 
+.modal-overlay:not(.hidden) .modal-card {
+  animation: sheet-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
 .modal-overlay.is-closing {
   animation: scrim-out 0.2s ease forwards;
 }
 
 .modal-overlay.is-closing .modal-card {
   animation: sheet-out 0.24s cubic-bezier(0.4, 0, 1, 1) forwards;
-}
-
-.modal-overlay:not(.hidden) .modal-card {
-  animation: sheet-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 /* Отклик на нажатие плашки тарифа. Без него единственным ответом на касание
@@ -1044,6 +1044,15 @@ body {
    и margin дал бы двойной интервал. */
 .card > * + .btn-standalone {
   margin-top: 12px;
+}
+
+/* Отзыв доступа у всех устройств разом — у левого края, а не по центру:
+   кнопка относится к списку устройств под ней, а не к счётчику над ней, и
+   по центру читалась бы заголовком карточки. Ширина по содержимому: во всю
+   строку она выглядит основным действием страницы, каким не является. */
+.device-reset-btn.btn-standalone {
+  align-self: flex-start;
+  width: auto;
 }
 
 .btn.secondary {

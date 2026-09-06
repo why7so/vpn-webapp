@@ -183,7 +183,6 @@
     planModalDevicesQty: document.getElementById("plan-modal-devices-qty"),
     planModalDots: document.getElementById("plan-modal-dots"),
     planModalSelectView: document.getElementById("plan-modal-select-view"),
-    planModalCancel: document.getElementById("plan-modal-cancel"),
     planModalPay: document.getElementById("plan-modal-pay"),
     planModalMethodView: document.getElementById("plan-modal-method-view"),
     planModalMethods: document.getElementById("plan-modal-methods"),
@@ -244,7 +243,6 @@
     payModalPlan: document.getElementById("pay-modal-plan"),
     payModalMethod: document.getElementById("pay-modal-method"),
     payModalPrice: document.getElementById("pay-modal-price"),
-    payModalCancel: document.getElementById("pay-modal-cancel"),
     payModalConfirm: document.getElementById("pay-modal-confirm"),
 
     aboutSupport: document.getElementById("about-support"),
@@ -832,7 +830,6 @@
     closeSheet(els.payModal);
   }
 
-  els.payModalCancel.onclick = closePayConfirm;
   els.payModal.onclick = (e) => {
     if (e.target === els.payModal) closePayConfirm(); // клик по затемнению — тоже отмена
   };
@@ -995,7 +992,6 @@
     closeSheet(els.planModal);
   }
 
-  els.planModalCancel.onclick = closePlanModal;
   els.planModal.onclick = (e) => {
     if (e.target === els.planModal) closePlanModal();
   };
@@ -1430,7 +1426,7 @@
     // отвечали они на вопрос, который задают один раз в жизни.
     const active = devices.filter((d) => !d.blocked).length;
     const limit = cachedDevices ? cachedDevices.device_limit : 0;
-    els.devicesCount.textContent = limit > 0 ? active + " из " + limit : String(active);
+    els.devicesCount.textContent = limit > 0 ? active + "/" + limit : String(active);
     els.devicesLimit.textContent = deviceWord(limit > 0 ? limit : active);
 
     els.devicesEmpty.classList.toggle("hidden", devices.length > 0);
