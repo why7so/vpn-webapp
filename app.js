@@ -1569,13 +1569,45 @@
     return tile;
   }
 
-  function renderAdminTiles(totals) {
+  const CURRENCY_SIGNS = { RUB: " ₽", USDT: " USDT" };
+
+  function moneyText(amount, currency) {
+    // Копейки показываем только когда они есть: «15 000 ₽» читается быстрее,
+    // чем «15 000,00 ₽», а на балансе в USDT дробная часть значима всегда.
+    const rounded = Math.round(amount * 100) / 100;
+    const text = Number.isInteger(rounded)
+      ? rounded.toLocaleString("ru-RU")
+      : rounded.toLocaleString("ru-RU", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return text + (CURRENCY_SIGNS[currency] || " " + currency);
+  }
+
+  function renderAdminTiles(totals, balances) {
     const box = els.adminTiles;
     box.innerHTML = "";
     box.appendChild(adminTile("Соединений", totals.connections));
     box.appendChild(adminTile("Активных подписок", totals.subs));
     box.appendChild(adminTile("Пользователей", totals.users));
     box.appendChild(adminTile("Ноды онлайн", totals.nodes_up, " / " + totals.nodes_total));
+
+    // balances = null означает «спросить не удалось», пустой список —
+    // «балансов нет». Первое показываем прочерком, второе не показываем
+    // вовсе: плитка с нулём выглядела бы как достоверный ноль.
+    if (balances === null || balances === undefined) {
+      box.appendChild(adminTile("Platega", "—"));
+      return;
+    }
+    // Валюта в подписи, а не только в значении: балансов два, и две плитки
+    // с одинаковым заголовком «Platega» различались бы лишь знаком в конце
+    // числа.
+    balances.forEach((b) => {
+      box.appendChild(
+        adminTile(
+          "Platega, " + (b.currency === "RUB" ? "₽" : b.currency),
+          moneyText(b.amount, b.currency),
+          b.frozen ? " заморожено " + moneyText(b.frozen, b.currency) : null
+        )
+      );
+    });
   }
 
   function nodeStatRow(label, value, unit, fillPercent) {
@@ -1809,7 +1841,7 @@
 
   async function refreshAdmin() {
     const data = await api("/api/admin/overview");
-    renderAdminTiles(data.totals);
+    renderAdminTiles(data.totals, data.balances);
     renderAdminNodes(data.nodes || []);
     renderAdminPromos(data.promos || []);
     renderAdminPromoForm();
