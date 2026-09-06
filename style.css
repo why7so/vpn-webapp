@@ -378,6 +378,82 @@ body {
   margin-top: 10px;
 }
 
+/* ---------- появление шторки ---------- */
+
+/* Шторки возникали мгновенно: только что была страница — и уже диалог, без
+   связи между этими кадрами. Подъём снизу показывает, откуда он взялся.
+   animation, а не transition: перетаскивание шторки пишет свой transform
+   прямо в стиль, и висящий переход дёргал бы её на каждом кадре. */
+@keyframes sheet-in {
+  from {
+    transform: translateY(14%);
+    opacity: 0.6;
+  }
+}
+
+@keyframes scrim-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.modal-overlay:not(.hidden) {
+  animation: scrim-in 0.22s ease;
+}
+
+.modal-overlay:not(.hidden) .modal-card {
+  animation: sheet-in 0.34s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Отклик на нажатие плашки тарифа. Без него единственным ответом на касание
+   было появление шторки, и до неё касание выглядело непринятым. */
+.plan-card {
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.plan-card:active {
+  transform: scale(0.985);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay:not(.hidden),
+  .modal-overlay:not(.hidden) .modal-card {
+    animation: none;
+  }
+
+  .plan-card {
+    transition: none;
+  }
+
+  .plan-card:active {
+    transform: none;
+  }
+}
+
+/* Действие вместо значения в строке аккаунта: почта не привязана — вместо
+   адреса стоит кнопка. Размер цели нажатия набирается невидимой областью,
+   как у .mini-btn: сам текст мелкий, а промахиваться по нему не должны. */
+.row-action {
+  position: relative;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--accent);
+  cursor: pointer;
+}
+
+.row-action::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
 /* ---------- generic card ---------- */
 
 .card {

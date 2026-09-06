@@ -249,6 +249,10 @@
     tgLinkTitle: document.getElementById("tg-link-title"),
     tgLinkCard: document.getElementById("tg-link-card"),
     tgLinkBtn: document.getElementById("tg-link-btn"),
+    accountEmailValue: document.getElementById("account-email-value"),
+    accountEmailBtn: document.getElementById("account-email-btn"),
+    emailModal: document.getElementById("email-modal"),
+    emailModalClose: document.getElementById("email-modal-close"),
     emailHint: document.getElementById("email-hint"),
     emailBound: document.getElementById("email-bound"),
     emailBoundValue: document.getElementById("email-bound-value"),
@@ -665,6 +669,13 @@
 
   function renderEmailSection(email, canUnbind) {
     const bound = !!email;
+
+    // Строка в карточке аккаунта: адрес, если он есть, иначе кнопка. Оба
+    // сразу не показываем — это одно место, а не два.
+    els.accountEmailValue.textContent = email || "—";
+    els.accountEmailValue.classList.toggle("hidden", !bound);
+    els.accountEmailBtn.classList.toggle("hidden", bound);
+
     els.emailBound.classList.toggle("hidden", !bound);
     els.emailBoundValue.textContent = email || "—";
     // У почтового аккаунта без Telegram почта — единственный вход, отвязать её
@@ -680,6 +691,27 @@
     els.emailCodeForm.classList.add("hidden");
     els.emailCodeInput.value = "";
   }
+
+  // В шторку ведут оба состояния строки: «Привязать», когда почты нет, и сам
+  // адрес, когда она есть — там же живёт «Отвязать».
+  function openEmailModal() {
+    els.emailModal.classList.remove("hidden");
+  }
+
+  function closeEmailModal() {
+    els.emailModal.classList.add("hidden");
+    // Незаконченный ввод кода не тащим в следующее открытие: код одноразовый
+    // и к тому времени, скорее всего, протухнет.
+    els.emailCodeForm.classList.add("hidden");
+    els.emailBindForm.classList.toggle("hidden", !els.emailBound.classList.contains("hidden"));
+  }
+
+  els.accountEmailBtn.onclick = openEmailModal;
+  els.accountEmailValue.onclick = openEmailModal;
+  els.emailModalClose.onclick = closeEmailModal;
+  els.emailModal.onclick = (e) => {
+    if (e.target === els.emailModal) closeEmailModal();
+  };
 
   async function requestBindCode() {
     const email = (els.emailBindInput.value || "").trim();
@@ -720,7 +752,11 @@
         method: "POST",
         body: JSON.stringify({ email: pendingBindEmail, code: code }),
       });
-      renderEmailSection(result.email);
+      // canUnbind=true: привязать новый адрес можно только при живом
+      // Telegram, значит отвязать его тоже есть чем. Без аргумента кнопка
+      // «Отвязать» пряталась до перезагрузки страницы.
+      renderEmailSection(result.email, true);
+      closeEmailModal();
       showToast("Почта привязана");
     } catch (e) {
       showToast(e.message, true);
@@ -1226,7 +1262,14 @@
       const chip = document.createElement("button");
       chip.className = "chip";
       chip.textContent = "+" + amount + "₽";
-      chip.onclick = () => doTopup(amount);
+      // Раньше нажатие сразу уводило на оплату — из четырёх сумм получалось
+      // четыре разных исхода, и промах стоил открытого счёта. Теперь кнопка
+      // складывает: 300 + 300 = 600, а платить или нет, решает «Пополнить».
+      chip.onclick = () => {
+        const current = parseInt(els.topupCustom.value, 10);
+        const next = (isNaN(current) || current < 0 ? 0 : current) + amount;
+        els.topupCustom.value = String(next);
+      };
       els.topupPresets.appendChild(chip);
     });
   }

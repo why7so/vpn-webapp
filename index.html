@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=42" />
+  <link rel="stylesheet" href="style.css?v=43" />
 </head>
 <body>
   <div id="app">
@@ -174,6 +174,14 @@
             <span class="account-row-label">Username</span>
             <span class="account-row-value" id="account-username">—</span>
           </div>
+          <!-- Почта жила отдельным разделом с пояснением на две строки.
+               Это такой же реквизит аккаунта, как ID и username, и выделять
+               его было нечем. Привязка и отвязка ушли в шторку. -->
+          <div class="account-row">
+            <span class="account-row-label">Почта</span>
+            <span class="account-row-value hidden" id="account-email-value">—</span>
+            <button class="row-action hidden" id="account-email-btn">Привязать</button>
+          </div>
         </div>
 
         <!-- Выбор темы жил кнопкой в шапке; шапки больше нет, а выбор
@@ -204,51 +212,6 @@
         <!-- Привязка почты: второй способ входа в браузерную версию того же
              аккаунта. Привязать можно только отсюда, из уже авторизованного
              кабинета — см. /api/email/bind/* в webapp/api.py. -->
-        <div class="section-title">Почта для входа</div>
-        <div class="card" id="email-card">
-          <div class="email-hint" id="email-hint">
-            Привяжите почту, чтобы входить в личный кабинет в браузере без Telegram.
-          </div>
-
-          <!-- Состояние 1: почта уже привязана -->
-          <div class="email-bound hidden" id="email-bound">
-            <div class="account-row">
-              <span class="account-row-label">Почта</span>
-              <span class="account-row-value" id="email-bound-value">—</span>
-            </div>
-            <button class="btn secondary btn-standalone" id="email-unbind-btn">Отвязать</button>
-          </div>
-
-          <!-- Состояние 2: ввод адреса -->
-          <div class="email-form" id="email-bind-form">
-            <input
-              class="input"
-              id="email-bind-input"
-              type="email"
-              inputmode="email"
-              autocomplete="email"
-              placeholder="you@example.com"
-            />
-            <button class="btn btn-standalone" id="email-bind-send">Выслать код</button>
-          </div>
-
-          <!-- Состояние 3: ввод кода из письма -->
-          <div class="email-form hidden" id="email-code-form">
-            <div class="email-hint" id="email-code-hint">Код отправлен на почту</div>
-            <input
-              class="input"
-              id="email-code-input"
-              type="text"
-              inputmode="numeric"
-              autocomplete="one-time-code"
-              maxlength="6"
-              placeholder="000000"
-            />
-            <button class="btn btn-standalone" id="email-code-confirm">Подтвердить</button>
-            <button class="btn secondary btn-standalone" id="email-code-cancel">Отмена</button>
-          </div>
-        </div>
-
         <div class="section-title">Поддержка</div>
         <div class="card" id="support-card">
           <div class="about-support" id="about-support"></div>
@@ -368,6 +331,60 @@
 
     <!-- Экран подтверждения перед оплатой: товар — цена — кнопка «Оплатить» -->
     <!-- Создание промокода: шторка со стеклом, как остальные модалки -->
+    <!-- Привязка почты: те же три состояния, что были разделом на странице,
+         но в шторке — как выбор тарифа. Раздел занимал экран постоянно ради
+         действия, которое делают один раз. -->
+    <div id="email-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title">Почта для входа</div>
+
+        <div class="email-hint" id="email-hint">
+          Привяжите почту, чтобы входить в личный кабинет в браузере без Telegram.
+        </div>
+
+        <!-- Состояние 1: почта уже привязана -->
+        <div class="email-bound hidden" id="email-bound">
+          <div class="account-row">
+            <span class="account-row-label">Почта</span>
+            <span class="account-row-value" id="email-bound-value">—</span>
+          </div>
+          <button class="btn secondary btn-standalone" id="email-unbind-btn">Отвязать</button>
+        </div>
+
+        <!-- Состояние 2: ввод адреса -->
+        <div class="email-form" id="email-bind-form">
+          <input
+            class="input"
+            id="email-bind-input"
+            type="email"
+            inputmode="email"
+            autocomplete="email"
+            placeholder="you@example.com"
+          />
+          <button class="btn btn-standalone" id="email-bind-send">Выслать код</button>
+        </div>
+
+        <!-- Состояние 3: ввод кода из письма -->
+        <div class="email-form hidden" id="email-code-form">
+          <div class="email-hint" id="email-code-hint">Код отправлен на почту</div>
+          <input
+            class="input"
+            id="email-code-input"
+            type="text"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            placeholder="000000"
+          />
+          <button class="btn btn-standalone" id="email-code-confirm">Подтвердить</button>
+          <button class="btn secondary btn-standalone" id="email-code-cancel">Отмена</button>
+        </div>
+
+        <button class="btn secondary btn-standalone" id="email-modal-close">Закрыть</button>
+      </div>
+    </div>
+
     <div id="promo-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>
@@ -478,6 +495,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=42"></script>
+  <script src="app.js?v=43"></script>
 </body>
 </html>
