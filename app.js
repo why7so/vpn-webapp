@@ -1415,6 +1415,21 @@
     els.deviceDeleteModal.classList.remove("hidden");
   }
 
+  els.deviceRenameCancel.onclick = () => closeSheet(els.deviceRenameModal);
+  els.deviceRenameModal.onclick = (e) => {
+    if (e.target === els.deviceRenameModal) closeSheet(els.deviceRenameModal);
+  };
+  els.deviceRenameSave.onclick = () => {
+    // id снимаем до закрытия: закрытие сбрасывает состояние шторки, а
+    // запрос уходит уже после её анимации.
+    const id = sheetDeviceId;
+    closeSheet(els.deviceRenameModal);
+    if (id) renameDevice(id, els.deviceRenameInput.value);
+  };
+  els.deviceRenameInput.onkeydown = (e) => {
+    if (e.key === "Enter") els.deviceRenameSave.onclick();
+  };
+
   els.deviceDeleteCancel.onclick = () => closeSheet(els.deviceDeleteModal);
   els.deviceDeleteModal.onclick = (e) => {
     if (e.target === els.deviceDeleteModal) closeSheet(els.deviceDeleteModal);
