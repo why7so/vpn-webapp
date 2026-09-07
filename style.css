@@ -1566,6 +1566,79 @@ body.scroll-locked {
   color: var(--danger);
 }
 
+/* Выключенная вручную — приглушённая, а не красная: красный означает
+   аварию, а тут всё в порядке, просто ноду не отдаём. */
+.node-proto.off {
+  opacity: 0.45;
+  text-decoration: line-through;
+}
+
+.node-card.off .node-name,
+.node-card.off .node-host,
+.node-card.off .node-state,
+.node-card.off .node-protos,
+.node-card.off .node-stat {
+  opacity: 0.5;
+}
+
+/* ---------- переключатель ---------- */
+
+/* Дорожка 46×28 с шариком 22: пропорции обычного системного переключателя,
+   в котором состояние читается формой, а не только цветом — на светлой
+   теме и при дальтонизме зелёный от серого отличим не всегда. */
+.switch {
+  position: relative;
+  width: 46px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 0;
+  padding: 0;
+  border-radius: 999px;
+  background: var(--track);
+  cursor: pointer;
+  transition: background 0.2s var(--page-ease);
+}
+
+/* Цель нажатия добирается невидимым полем: сама дорожка ниже 44pt, а
+   промахнуться по выключателю ноды — это выключить не ту машину. */
+.switch::before {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+.switch i {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: var(--shadow-pop);
+  transition: transform 0.2s var(--page-ease);
+}
+
+.switch.on {
+  background: var(--accent);
+}
+
+.switch.on i {
+  transform: translateX(18px);
+}
+
+.switch:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .switch,
+  .switch i {
+    transition: none;
+  }
+}
+
 .node-stat {
   display: flex;
   align-items: center;
@@ -1617,6 +1690,13 @@ body.scroll-locked {
   font-size: 12px;
   color: var(--danger);
   margin-top: 8px;
+}
+
+/* Та же строка, но про наше решение, а не про аварию. Красным здесь
+   нельзя: выключенная вручную нода исправна, и тревожный цвет заставлял бы
+   её чинить. */
+.node-down-hint.muted {
+  color: var(--text-dim);
 }
 
 /* ---------- форма промокода ---------- */

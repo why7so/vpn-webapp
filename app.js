@@ -1655,6 +1655,26 @@
     return row;
   }
 
+  // Выключатель ноды: убирает её из выдачи подписки, не удаляя строку.
+  // Подтверждения нет намеренно — действие обратимо тем же нажатием, а
+  // цена ошибки мала: нода уходит из подписки, а не из базы, ключи reality
+  // остаются на месте. Спрашивать «точно?» на обратимом действии значит
+  // приучать нажимать «да» не глядя.
+  async function setNodeEnabled(node, enabled, button) {
+    button.disabled = true;
+    try {
+      await api("/api/admin/node", {
+        method: "POST",
+        body: JSON.stringify({ machine_id: node.machine_id, enabled: enabled }),
+      });
+      showToast(node.name + (enabled ? " вернулась в подписку" : " убрана из подписки"));
+      await refreshAdmin();
+    } catch (e) {
+      showToast(e.message, true);
+      button.disabled = false;
+    }
+  }
+
   function renderAdminNodes(nodes) {
     const box = els.adminNodes;
     box.innerHTML = "";
@@ -1691,7 +1711,22 @@
       state.className = "node-state" + (n.up ? "" : " down");
       state.textContent = n.up ? "online" : n.state || "offline";
       head.appendChild(state);
+
+      // Выключатель показывает не состояние машины, а наше решение отдавать
+      // её. Поэтому он рядом со значком состояния, а не вместо него: нода
+      // бывает живой и выключенной одновременно, и это разные строки.
+      const sw = document.createElement("button");
+      sw.className = "switch" + (n.enabled ? " on" : "");
+      sw.setAttribute("role", "switch");
+      sw.setAttribute("aria-checked", n.enabled ? "true" : "false");
+      sw.setAttribute("aria-label", "Отдавать в подписке");
+      sw.title = n.enabled ? "Убрать из подписки" : "Вернуть в подписку";
+      sw.appendChild(document.createElement("i"));
+      sw.onclick = () => setNodeEnabled(n, !n.enabled, sw);
+      head.appendChild(sw);
       card.appendChild(head);
+
+      if (!n.enabled) card.classList.add("off");
 
       // Протоколы одной машины — это отдельные строки в базе с общими
       // метриками, поэтому показываем их подписями внутри карточки, а не
@@ -1702,12 +1737,24 @@
         row.className = "node-protos";
         n.protocols.forEach((p) => {
           const chip = document.createElement("span");
-          chip.className = "node-proto" + (p.up ? "" : " down");
+          chip.className =
+            "node-proto" + (p.enabled === false ? " off" : p.up ? "" : " down");
           chip.textContent = p.protocol + ":" + p.port;
           chip.title = p.id;
           row.appendChild(chip);
         });
         card.appendChild(row);
+      }
+
+      // Выключенная вручную говорит об этом первой строкой: нагрузка и
+      // «online» ниже иначе читаются как «нода в работе».
+      if (!n.enabled) {
+        const hint = document.createElement("div");
+        hint.className = "node-down-hint muted";
+        hint.textContent =
+          "Выключена вручную — в подписку не отдаётся. У клиентов пропадёт " +
+          "при следующем обновлении подписки.";
+        card.appendChild(hint);
       }
 
       if (n.up && n.stats_at) {
