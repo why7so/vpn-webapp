@@ -232,7 +232,7 @@
     promoModal: document.getElementById("promo-modal"),
     promoModalCancel: document.getElementById("promo-modal-cancel"),
     devicesResetBtn: document.getElementById("devices-reset-btn"),
-    devicesResetConfirm: document.getElementById("devices-reset-confirm"),
+    devicesResetModal: document.getElementById("devices-reset-modal"),
     devicesResetCancel: document.getElementById("devices-reset-cancel"),
     devicesResetApply: document.getElementById("devices-reset-apply"),
     devicesPayMethods: document.getElementById("devices-pay-methods"),
@@ -1502,9 +1502,11 @@
     }
   }
 
+  // Кнопка при этом остаётся на месте: раньше она пряталась, потому что
+  // подтверждение занимало её место в карточке. У шторки своё место.
   function showResetConfirm(show) {
-    els.devicesResetConfirm.classList.toggle("hidden", !show);
-    els.devicesResetBtn.classList.toggle("hidden", show);
+    if (show) els.devicesResetModal.classList.remove("hidden");
+    else closeSheet(els.devicesResetModal);
   }
 
   async function deleteDevice(deviceId) {
@@ -1543,6 +1545,9 @@
 
   els.devicesResetBtn.onclick = () => showResetConfirm(true);
   els.devicesResetCancel.onclick = () => showResetConfirm(false);
+  els.devicesResetModal.onclick = (e) => {
+    if (e.target === els.devicesResetModal) showResetConfirm(false);
+  };
   els.devicesResetApply.onclick = resetAllDevices;
 
 

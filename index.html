@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=51" />
+  <link rel="stylesheet" href="style.css?v=52" />
 </head>
 <body>
   <div id="app">
@@ -247,19 +247,6 @@
           <button class="btn danger btn-standalone device-reset-btn" id="devices-reset-btn">
             Удалить все устройства
           </button>
-          <div class="hidden" id="devices-reset-confirm">
-            <div class="email-hint devices-reset-warning">
-              Это нужно, только если ссылка-подписка попала к посторонним.
-              Ключ сменится, доступ пропадёт сразу на всех устройствах, включая
-              это, и на своих подписку придётся добавить заново.
-              <br /><br />
-              Просто освободить место — отключите или удалите одно устройство.
-            </div>
-            <div class="row">
-              <button class="btn secondary" id="devices-reset-cancel">Отмена</button>
-              <button class="btn danger" id="devices-reset-apply">Удалить и сменить ссылку</button>
-            </div>
-          </div>
         </div>
 
         <div id="devices-list"></div>
@@ -404,6 +391,27 @@
       </div>
     </div>
 
+    <!-- Подтверждение сброса — шторкой, как переименование и удаление:
+         раскрываясь внутри карточки, оно сдвигало список устройств вниз, и
+         кнопки оказывались там, куда взгляд в этот момент не смотрит. -->
+    <div id="devices-reset-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title">Удалить все устройства</div>
+        <div class="email-hint">
+          Это нужно, только если ссылка-подписка попала к посторонним.
+          Ключ сменится, доступ пропадёт сразу на всех устройствах, включая
+          это, и на своих подписку придётся добавить заново.
+          <br /><br />
+          Просто освободить место — удалите одно устройство.
+        </div>
+        <div class="row">
+          <button class="btn secondary" id="devices-reset-cancel">Отмена</button>
+          <button class="btn danger" id="devices-reset-apply">Удалить и сменить ссылку</button>
+        </div>
+      </div>
+    </div>
+
     <div id="device-delete-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>
@@ -525,6 +533,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=51"></script>
+  <script src="app.js?v=52"></script>
 </body>
 </html>

@@ -693,13 +693,6 @@ body {
   color: var(--text-dim);
 }
 
-/* Кнопка полного сброса: намеренно не красная в покое — красной делаем
-   только подтверждение, чтобы случайное касание не выглядело как действие. */
-.devices-reset-warning {
-  margin: 10px 0;
-  color: var(--danger);
-}
-
 .btn.danger {
   background: var(--danger);
   color: var(--bg);
