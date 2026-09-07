@@ -205,6 +205,10 @@
     deviceRenameInput: document.getElementById("device-rename-input"),
     deviceRenameSave: document.getElementById("device-rename-save"),
     deviceRenameCancel: document.getElementById("device-rename-cancel"),
+    deviceDeleteModal: document.getElementById("device-delete-modal"),
+    deviceDeleteText: document.getElementById("device-delete-text"),
+    deviceDeleteApply: document.getElementById("device-delete-apply"),
+    deviceDeleteCancel: document.getElementById("device-delete-cancel"),
     deviceBlockModal: document.getElementById("device-block-modal"),
     deviceBlockTitle: document.getElementById("device-block-title"),
     deviceBlockText: document.getElementById("device-block-text"),
@@ -1369,6 +1373,10 @@
   const ICON_CHECK =
     '<svg viewBox="0 0 48 48" fill="currentColor">' +
     '<path d="M40.6 12.1L17 35.7 7.4 26.1 4.6 29 17 41.3 43.4 14.9z"></path></svg>';
+  const ICON_TRASH =
+    '<svg viewBox="0 0 24 24" fill="currentColor">' +
+    '<path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9z">' +
+    '</path></svg>';
   // Крест оставлен обводкой, но потолщён: рядом с залитыми карандашом и
   // галочкой тонкая линия читалась бы легче их и сбивала бы вес ряда.
   const ICON_CROSS =
@@ -1387,6 +1395,15 @@
     // Фокус после кадра: до появления шторки поле ещё не на экране, и
     // клавиатура на iOS открывалась поверх пустого места.
     requestAnimationFrame(() => els.deviceRenameInput.focus());
+  }
+
+  function openDeleteModal(device) {
+    sheetDeviceId = device.id;
+    els.deviceDeleteText.textContent =
+      "«" + device.name + "» пропадёт из списка и освободит место. " +
+      "Доступ при этом не отзывается: подписка на нём продолжит работать, и " +
+      "устройство появится снова, когда обновит её.";
+    els.deviceDeleteModal.classList.remove("hidden");
   }
 
   function openBlockModal(device) {
@@ -1408,6 +1425,16 @@
   };
   els.deviceRenameInput.onkeydown = (e) => {
     if (e.key === "Enter") els.deviceRenameSave.onclick();
+  };
+
+  els.deviceDeleteCancel.onclick = () => closeSheet(els.deviceDeleteModal);
+  els.deviceDeleteModal.onclick = (e) => {
+    if (e.target === els.deviceDeleteModal) closeSheet(els.deviceDeleteModal);
+  };
+  els.deviceDeleteApply.onclick = () => {
+    const id = sheetDeviceId;
+    closeSheet(els.deviceDeleteModal);
+    if (id) deleteDevice(id);
   };
 
   els.deviceBlockCancel.onclick = () => closeSheet(els.deviceBlockModal);
@@ -1502,6 +1529,14 @@
       };
       actions.appendChild(toggle);
 
+      const del = document.createElement("button");
+      del.className = "device-icon-btn";
+      del.title = "Удалить из списка";
+      del.setAttribute("aria-label", del.title);
+      del.innerHTML = ICON_TRASH;
+      del.onclick = () => openDeleteModal(device);
+      actions.appendChild(del);
+
       card.appendChild(actions);
       list.appendChild(card);
     });
@@ -1543,11 +1578,28 @@
     els.devicesResetBtn.classList.toggle("hidden", show);
   }
 
+  async function deleteDevice(deviceId) {
+    try {
+      await api("/api/devices/delete", {
+        method: "POST",
+        body: JSON.stringify({ device_id: deviceId }),
+      });
+      showToast("Устройство удалено из списка");
+      await refreshDevicesPage();
+    } catch (e) {
+      showToast(e.message, true);
+    }
+  }
+
+  // Настоящий отзыв доступа: меняется ключ, а с ним и ссылка-подписка.
+  // Старые конфиги перестают приниматься нодой независимо от того, обновится
+  // клиент или нет, — в отличие от отключения и удаления, которые действуют
+  // только на выдачу подписки.
   async function resetAllDevices() {
     els.devicesResetApply.disabled = true;
     try {
       await api("/api/devices/reset", { method: "POST", body: JSON.stringify({}) });
-      showToast("Все устройства отключены — ссылка обновлена");
+      showToast("Ссылка обновлена — добавьте подписку заново на своих устройствах");
       showResetConfirm(false);
       // Профиль тоже: ссылка-подписка сменилась, а её показывает страница
       // подключения — иначе там осталась бы мёртвая.
