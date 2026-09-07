@@ -1625,10 +1625,16 @@
     box.appendChild(adminTile("Пользователей", totals.users));
     box.appendChild(adminTile("Ноды онлайн", totals.nodes_up, " / " + totals.nodes_total));
 
-    // balances = null означает «спросить не удалось», пустой список —
-    // «балансов нет». Первое показываем прочерком, второе не показываем
-    // вовсе: плитка с нулём выглядела бы как достоверный ноль.
-    if (balances === null || balances === undefined) {
+    // Три состояния, и все разные. undefined — ещё спрашиваем (баланс
+    // приходит отдельным запросом, потому что ходит наружу и медленнее
+    // всего остального). null — спросить не удалось. Пустой список —
+    // «Platega говорит, что балансов нет», и тогда плиток нет вовсе:
+    // плитка с нулём выглядела бы как достоверный ноль.
+    if (balances === undefined) {
+      box.appendChild(adminTile("Platega", "…"));
+      return;
+    }
+    if (balances === null) {
       box.appendChild(adminTile("Platega", "—"));
       return;
     }
@@ -1922,12 +1928,32 @@
     }
   }
 
+  // Последняя сводка — чтобы перерисовать плитки, когда догрузится баланс,
+  // не запрашивая всё заново.
+  let adminTotals = null;
+
   async function refreshAdmin() {
     const data = await api("/api/admin/overview");
-    renderAdminTiles(data.totals, data.balances);
+    adminTotals = data.totals;
+    renderAdminTiles(adminTotals, undefined);
     renderAdminNodes(data.nodes || []);
     renderAdminPromos(data.promos || []);
     renderAdminPromoForm();
+    // Намеренно без await: баланс Platega — единственное, что ходит в чужой
+    // API, и ждать его нечего. Панель уже нарисована, плитка догрузится.
+    refreshAdminBalances();
+  }
+
+  async function refreshAdminBalances() {
+    let balances = null;
+    try {
+      const data = await api("/api/admin/balances");
+      balances = data && data.balances !== undefined ? data.balances : null;
+    } catch (e) {
+      // Молча: прочерк на плитке и говорит, что баланс неизвестен, а
+      // тост поверх работающей панели — про чужую недоступность.
+    }
+    if (adminTotals) renderAdminTiles(adminTotals, balances);
   }
 
   async function createPromo() {
