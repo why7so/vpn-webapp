@@ -209,11 +209,6 @@
     deviceDeleteText: document.getElementById("device-delete-text"),
     deviceDeleteApply: document.getElementById("device-delete-apply"),
     deviceDeleteCancel: document.getElementById("device-delete-cancel"),
-    deviceBlockModal: document.getElementById("device-block-modal"),
-    deviceBlockTitle: document.getElementById("device-block-title"),
-    deviceBlockText: document.getElementById("device-block-text"),
-    deviceBlockApply: document.getElementById("device-block-apply"),
-    deviceBlockCancel: document.getElementById("device-block-cancel"),
     devicesEmpty: document.getElementById("devices-empty"),
     devicesNote: document.getElementById("devices-note"),
     devicesOpenBtn: document.getElementById("devices-open-btn"),
@@ -1370,19 +1365,10 @@
     'L 16 4 L 20 8 L 21.171875 6.828125 C 22.275875 5.724125 22.275875 3.933125 ' +
     '21.171875 2.828125 C 20.619375 2.275625 19.895625 2 19.171875 2 z ' +
     'M 14.5 5.5 L 3 17 L 3 21 L 7 21 L 18.5 9.5 L 14.5 5.5 z"></path></svg>';
-  const ICON_CHECK =
-    '<svg viewBox="0 0 48 48" fill="currentColor">' +
-    '<path d="M40.6 12.1L17 35.7 7.4 26.1 4.6 29 17 41.3 43.4 14.9z"></path></svg>';
   const ICON_TRASH =
     '<svg viewBox="0 0 24 24" fill="currentColor">' +
     '<path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9z">' +
     '</path></svg>';
-  // Крест оставлен обводкой, но потолщён: рядом с залитыми карандашом и
-  // галочкой тонкая линия читалась бы легче их и сбивала бы вес ряда.
-  const ICON_CROSS =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" ' +
-    'stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>';
-
   // Какое устройство сейчас в шторке. Держим id, а не сам объект: список
   // между открытием и сохранением может перерисоваться.
   let sheetDeviceId = null;
@@ -1406,27 +1392,6 @@
     els.deviceDeleteModal.classList.remove("hidden");
   }
 
-  function openBlockModal(device) {
-    sheetDeviceId = device.id;
-    els.deviceBlockText.textContent =
-      "«" + device.name + "» потеряет доступ при следующем обновлении подписки. " +
-      "Включить обратно можно здесь же в течение суток.";
-    els.deviceBlockModal.classList.remove("hidden");
-  }
-
-  els.deviceRenameCancel.onclick = () => closeSheet(els.deviceRenameModal);
-  els.deviceRenameModal.onclick = (e) => {
-    if (e.target === els.deviceRenameModal) closeSheet(els.deviceRenameModal);
-  };
-  els.deviceRenameSave.onclick = () => {
-    const id = sheetDeviceId;
-    closeSheet(els.deviceRenameModal);
-    if (id) renameDevice(id, els.deviceRenameInput.value);
-  };
-  els.deviceRenameInput.onkeydown = (e) => {
-    if (e.key === "Enter") els.deviceRenameSave.onclick();
-  };
-
   els.deviceDeleteCancel.onclick = () => closeSheet(els.deviceDeleteModal);
   els.deviceDeleteModal.onclick = (e) => {
     if (e.target === els.deviceDeleteModal) closeSheet(els.deviceDeleteModal);
@@ -1435,16 +1400,6 @@
     const id = sheetDeviceId;
     closeSheet(els.deviceDeleteModal);
     if (id) deleteDevice(id);
-  };
-
-  els.deviceBlockCancel.onclick = () => closeSheet(els.deviceBlockModal);
-  els.deviceBlockModal.onclick = (e) => {
-    if (e.target === els.deviceBlockModal) closeSheet(els.deviceBlockModal);
-  };
-  els.deviceBlockApply.onclick = () => {
-    const id = sheetDeviceId;
-    closeSheet(els.deviceBlockModal);
-    if (id) setDeviceBlocked(id, true);
   };
 
   function renderDevicesPage(devices) {
@@ -1516,21 +1471,8 @@
       renameBtn.onclick = () => openRenameModal(device);
       actions.appendChild(renameBtn);
 
-      const toggle = document.createElement("button");
-      toggle.className = "device-icon-btn" + (device.blocked ? " accent" : " danger");
-      toggle.title = device.blocked ? "Включить" : "Отключить";
-      toggle.setAttribute("aria-label", toggle.title);
-      toggle.innerHTML = device.blocked ? ICON_CHECK : ICON_CROSS;
-      toggle.onclick = () => {
-        // Включение обратно не спрашивает подтверждения: оно ничего не
-        // отнимает. Отключение спрашивает — человек лишается доступа.
-        if (device.blocked) setDeviceBlocked(device.id, false);
-        else openBlockModal(device);
-      };
-      actions.appendChild(toggle);
-
       const del = document.createElement("button");
-      del.className = "device-icon-btn";
+      del.className = "device-icon-btn danger";
       del.title = "Удалить из списка";
       del.setAttribute("aria-label", del.title);
       del.innerHTML = ICON_TRASH;
@@ -1546,19 +1488,6 @@
     const data = await api("/api/devices");
     cachedDevices = data;
     renderDevicesPage(data.devices || []);
-  }
-
-  async function setDeviceBlocked(deviceId, blocked) {
-    try {
-      await api("/api/devices/block", {
-        method: "POST",
-        body: JSON.stringify({ device_id: deviceId, blocked: blocked }),
-      });
-      showToast(blocked ? "Отключено — конфигурация пропадёт в течение часа" : "Включено обратно");
-      await refreshDevicesPage();
-    } catch (e) {
-      showToast(e.message, true);
-    }
   }
 
   async function renameDevice(deviceId, name) {
