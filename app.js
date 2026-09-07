@@ -63,21 +63,19 @@
   function goToLoginPage() {
     window.location.replace("login" + window.location.search);
   }
-  // ---------- popup с результатом активации промокода ----------
-  // Кнопка "Активировать" промокода (в боте) ведёт сюда с параметром
-  // ?promo_popup=..., чтобы результат показывался всплывающим окном внутри
-  // приложения, а не отдельным сообщением в чате бота.
-  const promoPopupParams = new URLSearchParams(window.location.search);
-  const promoPopupText = promoPopupParams.get("promo_popup");
-  if (promoPopupText) {
-    // сразу убираем параметр из адреса, чтобы обновление страницы или
-    // возврат назад не показывали окно повторно
-    promoPopupParams.delete("promo_popup");
-    const restParams = promoPopupParams.toString();
-    const cleanUrl =
-      window.location.pathname + (restParams ? "?" + restParams : "") + window.location.hash;
-    window.history.replaceState({}, "", cleanUrl);
-  }
+  // ---------- одноразовые сообщения от бота ----------
+  // Начисленные дни, реферальный бонус, выданный триал. Раньше текст ехал
+  // сюда в параметре ?promo_popup=..., вшитом в кнопку под сообщением
+  // /start. Сообщение в чате живёт вечно, а кнопка под ним — главный вход
+  // в приложение, поэтому «вам начислен пробный период» показывалось при
+  // каждом входе, спустя недели после самой выдачи.
+  //
+  // Теперь текст лежит строкой в базе, и запрос его ЗАБИРАЕТ: показ
+  // ровно один, от какой бы кнопки приложение ни открыли.
+  //
+  // Параметр из адреса намеренно не читается вовсе: старые сообщения с
+  // ним остались в чатах у всех, и стоит его снова начать понимать —
+  // повторы вернутся.
 
   function showTgPopup(title, message) {
     if (tg && tg.showPopup) {
@@ -89,9 +87,19 @@
     }
   }
 
-  function showPromoPopupIfAny() {
-    if (!promoPopupText) return;
-    showTgPopup("Промокод", promoPopupText);
+  async function showPendingNotices() {
+    try {
+      const data = await api("/api/notices");
+      const notices = (data && data.notices) || [];
+      if (!notices.length) return;
+      // Несколько событий одного /start (промокод, реф-бонус, триал)
+      // показываем одним окном: два попапа подряд Telegram не покажет —
+      // второй откроется поверх первого и молча потеряется.
+      showTgPopup("Jay Connect", shortenForPopup(notices.join("\n\n")));
+    } catch (e) {
+      // Поздравление — не то, ради чего стоит показывать ошибку. Молчим:
+      // начисленное и так видно на главном экране.
+    }
   }
 
   // ---------- автоактивация промокода при открытии по прямой ссылке ----------
@@ -106,8 +114,13 @@
     // showPopup ограничен 256 символами, а ссылка-подписка и так видна на
     // главном экране приложения — обрезаем текст на этой строке (если есть)
     // и подстраховываемся на случай других длинных сообщений.
+    //
+    // Ищем подстроку, а не начало строки: подпись у неё разная — «Ваша
+    // ссылка-подписка», «Ссылка-подписка:», — и совпадение с началом
+    // ловило только первую, а на остальных попап упирался в обрезку по
+    // длине и обрывался на середине ссылки.
     const lines = text.split("\n");
-    const cutIdx = lines.findIndex((l) => l.indexOf("Ваша ссылка-подписка") === 0);
+    const cutIdx = lines.findIndex((l) => l.toLowerCase().indexOf("ссылка-подписка") !== -1);
     const kept = cutIdx === -1 ? lines : lines.slice(0, cutIdx);
     let result = kept.join("\n").trim();
     if (result.length > 250) result = result.slice(0, 247).trim() + "...";
@@ -2538,9 +2551,12 @@
       }
 
       if (autoPromoCode) {
+        // Активация по прямой ссылке сама покажет результат; накопленные
+        // сообщения подождут следующего открытия — два окна подряд
+        // Telegram всё равно не покажет.
         redeemPromoFromStartParam(autoPromoCode);
       } else {
-        showPromoPopupIfAny();
+        showPendingNotices();
       }
     } catch (e) {
       // Протухшая браузерная сессия: api() при 401 уже вычистил токен и обнулил
