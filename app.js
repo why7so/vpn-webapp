@@ -1773,7 +1773,7 @@
           const chip = document.createElement("span");
           chip.className =
             "node-proto" + (p.enabled === false ? " off" : p.up ? "" : " down");
-          chip.textContent = p.protocol + ":" + p.port;
+          chip.textContent = p.protocol;
           chip.title = p.id;
           row.appendChild(chip);
         });
