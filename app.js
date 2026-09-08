@@ -378,19 +378,19 @@
   // Список на платформу, а не одно значение: так добавить второе приложение
   // будет правкой данных, а не логики. Сейчас всюду один Happ.
   const PLATFORM_APPS = {
-    ios: ["happ"],
-    android: ["happ"],
-    windows: ["happ"],
-    macos: ["happ"],
-    linux: ["happ"],
-    other: ["happ"],
+    ios: ["incy"],
+    android: ["incy"],
+    windows: ["incy"],
+    macos: ["incy"],
+    linux: ["incy"],
+    other: ["incy"],
   };
 
   const APP_INFO = {
     happ: {
       name: "Happ",
       scheme: "happ",
-      recommended: true,
+      recommended: false,
       storeUrls: {
         ios: "https://apps.apple.com/us/app/happ-proxy-utility/id6504287215",
         android: "https://play.google.com/store/apps/details?id=com.happproxy",
@@ -401,6 +401,20 @@
       },
       storeLabels: { ios: "App Store", android: "Google Play" },
     },
+    incy: {
+      name: "Incy",
+      scheme: "incy",
+      recommended: true,
+      storeUrls: {
+        ios: "https://apps.apple.com/us/app/incy/id6756943388",
+        android: "https://play.google.com/store/apps/details?id=llc.itdev.incy",
+        windows: "https://incy.cc/#downloads",
+        macos: "https://apps.apple.com/us/app/incy/id6756943388",
+        linux: "https://incy.cc/#downloads",
+        other: "https://incy.cc/#downloads",
+      },
+      storeLabels: { ios: "App Store", android: "Google Play" },
+    }
   };
 
   let connectPlatform = null;
