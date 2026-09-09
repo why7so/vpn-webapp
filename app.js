@@ -1839,9 +1839,40 @@
     return "дней";
   }
 
+  // Какая группа промокодов открыта. Живёт снаружи функции: список
+  // перерисовывается при каждом подтверждении удаления, и вкладка не должна
+  // при этом перескакивать.
+  let adminPromoTab = "regular";
+
+  function promoTabsRow(regular, partner) {
+    const seg = document.createElement("div");
+    seg.className = "seg promo-tabs";
+    [
+      ["regular", "Обычные", regular.length],
+      ["partner", "Партнёрские", partner.length],
+    ].forEach(([key, title, count]) => {
+      const btn = document.createElement("button");
+      btn.className = "seg-btn" + (adminPromoTab === key ? " active" : "");
+      // Счётчик прямо в кнопке: иначе пустая вкладка выглядит поломкой, а
+      // так сразу видно, что кодов этого вида просто нет.
+      btn.textContent = title + " · " + count;
+      btn.onclick = () => {
+        adminPromoTab = key;
+        renderAdminPromos(lastAdminPromos);
+      };
+      seg.appendChild(btn);
+    });
+    return seg;
+  }
+
+  // Последний показанный список — чтобы переключение вкладки не требовало
+  // повторного запроса к серверу.
+  let lastAdminPromos = [];
+
   function renderAdminPromos(promos) {
     const box = els.adminPromos;
     box.innerHTML = "";
+    lastAdminPromos = promos;
 
     if (!promos.length) {
       const empty = document.createElement("div");
@@ -1851,7 +1882,28 @@
       return;
     }
 
-    promos.forEach((p) => {
+    // Партнёрские отделены не для красоты: их заводят пачками, по коду на
+    // партнёра, и в общем списке они вытесняют обычные акции, которых
+    // единицы и которые меняют чаще.
+    const partner = promos.filter((p) => p.type === "partner");
+    const regular = promos.filter((p) => p.type !== "partner");
+    box.appendChild(promoTabsRow(regular, partner));
+
+    const shown = adminPromoTab === "partner" ? partner : regular;
+    if (!shown.length) {
+      const empty = document.createElement("div");
+      empty.className = "card";
+      empty.innerHTML =
+        '<div class="email-hint">' +
+        (adminPromoTab === "partner"
+          ? "Партнёрских кодов нет. Создаются командой /promo_create КОД partner N в боте."
+          : "Обычных промокодов нет.") +
+        "</div>";
+      box.appendChild(empty);
+      return;
+    }
+
+    shown.forEach((p) => {
       const card = document.createElement("div");
       const confirming = pendingPromoDelete === p.code;
       card.className =
@@ -1904,7 +1956,7 @@
         cancel.textContent = "Отмена";
         cancel.onclick = () => {
           pendingPromoDelete = null;
-          renderAdminPromos(promos);
+          renderAdminPromos(lastAdminPromos);
         };
         row.appendChild(cancel);
 
@@ -1921,7 +1973,7 @@
         del.textContent = "Удалить";
         del.onclick = () => {
           pendingPromoDelete = p.code;
-          renderAdminPromos(promos);
+          renderAdminPromos(lastAdminPromos);
         };
         card.appendChild(del);
       }
