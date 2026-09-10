@@ -287,15 +287,70 @@
   };
 
   let toastTimer = null;
-  function showToast(message, isError) {
-    els.toast.textContent = message;
-    els.toast.classList.remove("hidden");
-    els.toast.style.color = isError ? "#ff6b6b" : "";
-    if (tg && tg.HapticFeedback) {
-      tg.HapticFeedback.notificationOccurred(isError ? "error" : "success");
+
+  // Знак вида сообщения. Не эмодзи: они у разных платформ разного размера и
+  // цвета, а тут нужен ровный кружок в одну линию с текстом.
+  const TOAST_MARKS = { success: "\u2713", error: "!", info: "\u00b7" };
+
+  /**
+   * Сообщение поверх экрана.
+   *
+   * kind — success | error | info. Раньше у всех трёх был один и тот же
+   * серый прямоугольник, и отличался только цвет текста: «Доступ выдан» и
+   * «Недостаточно средств» выглядели одинаково, а на маленьком тексте внизу
+   * экрана разницу вообще никто не замечал. Теперь вид задаёт полоса слева
+   * и знак в кружке — то есть форма, а не только цвет: так понятно и тем,
+   * кто цвета не различает.
+   *
+   * detail — вторая строка с конкретикой (до какого числа, сколько на
+   * балансе). Ради неё всё и затевалось: «Доступ выдан» без срока не
+   * отвечает на вопрос, который человек в этот момент задаёт.
+   */
+  function notify(kind, title, detail) {
+    const box = els.toast;
+    box.className = "toast toast-" + kind;
+    box.textContent = "";
+
+    const mark = document.createElement("i");
+    mark.className = "toast-mark";
+    mark.textContent = TOAST_MARKS[kind] || TOAST_MARKS.info;
+    box.appendChild(mark);
+
+    const body = document.createElement("div");
+    body.className = "toast-body";
+    const head = document.createElement("b");
+    head.className = "toast-title";
+    head.textContent = title;
+    body.appendChild(head);
+    if (detail) {
+      const sub = document.createElement("span");
+      sub.className = "toast-detail";
+      sub.textContent = detail;
+      body.appendChild(sub);
     }
+    box.appendChild(body);
+
+    box.classList.remove("hidden");
+    // Перезапуск анимации появления: без сброса класса второе подряд
+    // сообщение просто подменяло бы текст в уже висящей плашке.
+    box.classList.remove("toast-in");
+    void box.offsetWidth;
+    box.classList.add("toast-in");
+
+    if (tg && tg.HapticFeedback) {
+      if (kind === "error") tg.HapticFeedback.notificationOccurred("error");
+      else if (kind === "success") tg.HapticFeedback.notificationOccurred("success");
+      else tg.HapticFeedback.impactOccurred("light");
+    }
+
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => els.toast.classList.add("hidden"), 3500);
+    // Со второй строкой читать дольше.
+    toastTimer = setTimeout(() => box.classList.add("hidden"), detail ? 5200 : 3600);
+  }
+
+  // Прежняя подпись: ею зовут из полусотни мест, где второй строки нет.
+  function showToast(message, isError) {
+    notify(isError ? "error" : "success", message);
   }
 
   async function api(path, options) {
@@ -1090,7 +1145,9 @@
   }
 
   async function pollInvoice(invoiceId, onPaid) {
-    showToast("Проверяем оплату…");
+    // info, а не success: оплата ещё не подтверждена, и зелёная галочка
+    // здесь обещала бы то, чего пока нет.
+    notify("info", "Проверяем оплату…", "Не закрывайте кабинет");
     for (let i = 0; i < 30; i++) {
       await new Promise((r) => setTimeout(r, 3000));
       try {
@@ -1107,26 +1164,37 @@
     showToast("Оплата пока не найдена. Если уже оплатили — подождите ещё немного и откройте кабинет заново.", true);
   }
 
+  /** Вторая строка для сообщений о выданном доступе: до какого числа. */
+  function subscriptionDetail(devicesNote) {
+    const sub = cachedProfile && cachedProfile.subscription;
+    const parts = [];
+    if (sub && sub.expires_at) parts.push("Подписка " + fmtDateShort(sub.expires_at));
+    if (devicesNote) parts.push(devicesNote);
+    return parts.join(" · ");
+  }
+
   async function purchase(planCode, provider, extraQty) {
     extraQty = extraQty || 0;
-    const devicesNote = extraQty ? " Устройства добавлены: +" + extraQty + "." : "";
+    const devicesNote = extraQty ? "+" + extraQty + " устройств" : "";
     try {
       const result = await api("/api/purchase", {
         method: "POST",
         body: JSON.stringify({ plan_code: planCode, provider: provider, extra_devices_qty: extraQty }),
       });
       if (result.status === "granted") {
-        showToast("Доступ выдан!" + devicesNote);
+        // Сначала обновляем профиль, потом показываем: срок в сообщении
+        // должен быть уже новый, а не тот, что был до покупки.
         await refreshProfile();
         if (extraQty) await refreshDevices();
+        notify("success", "Доступ выдан", subscriptionDetail(devicesNote));
         return;
       }
       // status === "invoice"
       if (tg) tg.openLink(result.pay_url);
       pollInvoice(result.invoice_id, async () => {
-        showToast("Оплата подтверждена, доступ выдан!" + devicesNote);
         await refreshProfile();
         if (extraQty) await refreshDevices();
+        notify("success", "Оплата подтверждена", subscriptionDetail(devicesNote));
       });
     } catch (e) {
       showToast(e.message, true);
@@ -1262,14 +1330,14 @@
         body: JSON.stringify({ qty: qty, provider: provider }),
       });
       if (result.status === "granted") {
-        showToast("Устройства добавлены! Лимит: " + result.device_limit);
+        notify("success", "Устройства добавлены", "Теперь доступно: " + result.device_limit);
         await refreshDevices();
         return;
       }
       // status === "invoice"
       if (tg) tg.openLink(result.pay_url);
       pollInvoice(result.invoice_id, async (r) => {
-        showToast("Оплата подтверждена! Лимит устройств: " + r.device_limit);
+        notify("success", "Оплата подтверждена", "Устройств доступно: " + r.device_limit);
         await refreshDevices();
       });
     } catch (e) {
@@ -1304,7 +1372,7 @@
       const result = await api("/api/topup", { method: "POST", body: JSON.stringify({ amount: amount }) });
       if (tg) tg.openLink(result.pay_url);
       pollInvoice(result.invoice_id, async (r) => {
-        showToast("Баланс пополнен! Текущий баланс: " + Math.round(r.balance) + " ₽");
+        notify("success", "Баланс пополнен", "Теперь на счету " + Math.round(r.balance) + " ₽");
         await refreshProfile();
       });
     } catch (e) {
@@ -1319,9 +1387,13 @@
     if (!code) return;
     try {
       const result = await api("/api/promo", { method: "POST", body: JSON.stringify({ code: code }) });
-      showToast(result.message);
       els.promoInput.value = "";
       await refreshProfile();
+      // Ответ сервера многострочный: первая строка — что произошло,
+      // остальные — конкретика. Ровно то деление, что нужно плашке.
+      const said = (result.message || "").split("\n").filter((line) => line.trim());
+      const head = (said.shift() || "Промокод активирован").replace(/^[✅🏷\s]+/, "");
+      notify("success", head, said.join(" · "));
     } catch (e) {
       showToast(e.message, true);
     }
@@ -1582,7 +1654,8 @@
     els.devicesResetApply.disabled = true;
     try {
       await api("/api/devices/reset", { method: "POST", body: JSON.stringify({}) });
-      showToast("Ссылка обновлена — добавьте подписку заново на своих устройствах");
+      notify("success", "Ссылка обновлена",
+             "Добавьте подписку заново на своих устройствах");
       showResetConfirm(false);
       // Профиль тоже: ссылка-подписка сменилась, а её показывает страница
       // подключения — иначе там осталась бы мёртвая.

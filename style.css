@@ -1184,23 +1184,174 @@ input:focus {
   text-align: right;
 }
 
+/* Плашка живёт в функциональном слое — поверх содержимого, вместе с
+   нижней навигацией и шторками, — и материал у неё тот же, что у них:
+   --glass-sheet + размытие. Отдельного «своего» фона у неё нет намеренно,
+   иначе поверх стеклянного интерфейса плавал бы кусок другого мира.
+
+   Вариант плотный, а не прозрачный: внутри текст, который надо прочитать
+   с первого взгляда и над списком устройств, и над яркой карточкой тарифа.
+   Размытие 28px и насыщенность 175% — та же полка, что у шторок (26px/165%),
+   чуть выше, потому что плашка меньше и фона под ней видно больше. */
 .toast {
   position: fixed;
-  left: 50%;
+  /* left/right вместе с margin-inline: auto, а не left: 50% с обратным
+     сдвигом. У fixed-элемента без правой границы ширина считается от левого
+     края до края экрана — то есть от середины, — и плашка ужималась до
+     половины ширины: max-width в 340px не мог примениться никогда, а текст
+     ломался на три строки там, где помещался бы в одну. С одной короткой
+     строкой это не всплывало. */
+  left: 16px;
+  right: 16px;
   bottom: 96px;
-  transform: translateX(-50%);
-  background: var(--surface-2);
+  margin-inline: auto;
+  width: fit-content;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: var(--glass-sheet);
+  backdrop-filter: blur(28px) saturate(175%);
+  -webkit-backdrop-filter: blur(28px) saturate(175%);
+  border: 1px solid var(--glass-border);
   color: var(--text);
-  padding: 10px 16px;
+  padding: 12px 16px 12px 15px;
   border-radius: var(--r-sm);
-  font-size: 13px;
-  max-width: 90vw;
-  text-align: center;
-  box-shadow: var(--shadow-pop);
+  max-width: min(92vw, 340px);
+  text-align: left;
+  /* Три слоя, снизу вверх: цветной торец — единственное место, где вид
+     сообщения выражен формой, а не только цветом; блик по верхней грани —
+     то, что делает стекло стеклом, а не полупрозрачным прямоугольником;
+     тень, отрывающая плашку от содержимого. Торец сделан внутренней тенью,
+     а не border-left: настоящая рамка резала бы скругление и выглядела
+     наклеенной на материал. */
+  box-shadow:
+    inset 3px 0 0 var(--toast-edge, var(--line-strong)),
+    inset 0 1px 0 var(--glass-highlight-2),
+    var(--shadow-card);
   /* Выше шторок (200): ошибки чаще всего возникают именно в них — занятая
      почта, неверный код, — и тост под шторкой выглядел как «нажал, и ничего
      не произошло». */
   z-index: 300;
+}
+
+.toast-mark {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  background: var(--line);
+  color: var(--text-dim);
+}
+
+.toast-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.toast-title {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.3;
+  /* Длинное сообщение об ошибке приходит с сервера целиком и переносится,
+     а не обрезается: недосказанная ошибка хуже длинной. */
+  overflow-wrap: anywhere;
+}
+
+.toast-detail {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--text-dim);
+  overflow-wrap: anywhere;
+}
+
+/* Цвета на стекле — по чуть-чуть и только там, где они что-то значат:
+   торец и знак. Заливать цветом саму пластину нельзя — материал должен
+   брать оттенок от того, что под ним, а не спорить с ним. Единственная
+   уступка — еле заметная подцветка от торца внутрь, которая гаснет к
+   середине: она подсказывает вид сообщения раньше, чем глаз доберётся до
+   знака, и при этом не мешает читать. */
+.toast-success {
+  --toast-edge: var(--accent);
+  background-image: linear-gradient(90deg, var(--accent-glow), transparent 58%);
+}
+
+.toast-success .toast-mark {
+  background: var(--accent-soft-2);
+  color: var(--accent);
+}
+
+.toast-error {
+  --toast-edge: var(--danger);
+  background-image: linear-gradient(90deg, var(--danger-soft), transparent 58%);
+}
+
+.toast-error .toast-mark {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Нейтральное сообщение остаётся полностью монохромным: «Проверяем
+   оплату…» — это не статус, а ожидание, и подсвечивать его нечем. */
+.toast-info {
+  --toast-edge: var(--line-strong);
+}
+
+/* Появление: короткий подъём снизу. Плашка живёт секунды, и длинная
+   анимация тут только мешала бы прочитать. */
+@keyframes toast-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-in {
+  animation: toast-rise 180ms var(--page-ease) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast-in {
+    animation: none;
+  }
+}
+
+/* Размытие есть не везде: старый Android WebView его не умеет, а iOS
+   отключает при экономии батареи. Полупрозрачная пластина превратилась бы
+   в мутное пятно с нечитаемым текстом — возвращаем непрозрачную подложку.
+   Так же поступает нижняя навигация ниже по файлу. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .toast {
+    background: var(--surface-2);
+  }
+}
+
+/* «Уменьшить прозрачность» в настройках доступности — просьба убрать
+   именно материал, а не оформление: торец, знак и тень остаются. */
+@media (prefers-reduced-transparency: reduce) {
+  .toast {
+    background: var(--surface-2);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .toast-success,
+  .toast-error {
+    background-image: none;
+  }
 }
 
 /* ---------- модалка подтверждения оплаты (товар-цена-кнопка «Оплатить») ---------- */
@@ -2078,10 +2229,6 @@ select.input:focus {
 
   #loading {
     min-height: 70vh;
-  }
-
-  .toast {
-    left: 50%;
   }
 
   .ring-wrap {
