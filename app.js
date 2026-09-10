@@ -1563,7 +1563,6 @@
       const meta = document.createElement("div");
       meta.className = "device-meta";
       const parts = [device.client_name, formatSeen(device.last_seen_at)];
-      if (device.ip_address) parts.push(device.ip_address);
       meta.textContent = parts.join(" · ");
       body.appendChild(meta);
 
