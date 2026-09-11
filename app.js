@@ -2435,17 +2435,15 @@
   // значением по умолчанию для тех, кто тему не трогал.
   // С главной — сразу на управление устройствами: карточка показывает
   // число, кнопка ведёт туда, где с ним что-то можно сделать.
-  els.homeDevicesBtn.onclick = () => {
-    switchPage("devices");
+  function openDevicesPage(skipAnim) {
+    switchPage("devices", null, skipAnim);
+    // Шторка подтверждения могла остаться открытой с прошлого захода.
     showResetConfirm(false);
-    refreshDevicesPage().catch((e) => showToast(e.message, true));
-  };
+    loadPageData("devices");
+  }
 
-  els.devicesOpenBtn.onclick = () => {
-    switchPage("devices");
-    showResetConfirm(false);
-    refreshDevicesPage().catch((e) => showToast(e.message, true));
-  };
+  els.homeDevicesBtn.onclick = () => openDevicesPage();
+  els.devicesOpenBtn.onclick = () => openDevicesPage();
   els.devicesBack.onclick = () => {
     switchPage("connect-device");
     // На управлении могли отключить устройство — подпись в блоке-входе
@@ -2656,19 +2654,33 @@
     }
   }
 
+  // Что подгрузить при показе страницы. Данные главной приходят один раз,
+  // при старте, а этим трём нужно своё:
+  //   devices        — список рисует ТОЛЬКО refreshDevicesPage, и без неё
+  //                    страница остаётся пустой с прочерками вместо счётчиков;
+  //   admin          — сводка живая, соединения и нагрузка нод меняются
+  //                    между заходами;
+  //   connect-device — подпись показывает число устройств, оно могло
+  //                    измениться, пока человек ходил по другим вкладкам.
+  //
+  // Раньше это висело на обработчиках отдельных кнопок, и стоило прийти на
+  // страницу другим путём — из нижней навигации или по прямой ссылке
+  // ?page=devices из уведомления, — как загрузка не срабатывала вовсе.
+  const PAGE_LOADERS = {
+    devices: refreshDevicesPage,
+    admin: refreshAdmin,
+    "connect-device": refreshDevices,
+  };
+
+  function loadPageData(pageId) {
+    const load = PAGE_LOADERS[pageId];
+    if (load) load().catch((e) => showToast(e.message, true));
+  }
+
   els.navItems.forEach((btn) => {
     btn.onclick = () => {
       switchPage(btn.dataset.target);
-      // Сводка админа живая: соединения и нагрузка нод меняются между
-      // заходами, кешировать её смысла нет.
-      if (btn.dataset.target === "admin") {
-        refreshAdmin().catch((e) => showToast(e.message, true));
-      }
-      // Подпись в блоке-входе показывает живое число устройств: оно могло
-      // измениться, пока человек ходил по другим вкладкам.
-      if (btn.dataset.target === "connect-device") {
-        refreshDevices().catch((e) => showToast(e.message, true));
-      }
+      loadPageData(btn.dataset.target);
     };
   });
 
@@ -2720,7 +2732,12 @@
       // сразу показываем нужную страницу без анимации (переход из #loading,
       // индикатор ещё не имеет размеров до первого кадра — тот же приём,
       // что раньше использовался для moveNavIndicator(true))
-      switchPage(initialPageFromHash(), null, true);
+      const startPage = initialPageFromHash();
+      switchPage(startPage, null, true);
+      // Ссылка ?page=… ведёт на страницу так же, как кнопка, — значит и
+      // данные ей нужны те же. Без этого переход из уведомления открывал
+      // пустой список устройств.
+      loadPageData(startPage);
       requestAnimationFrame(() => moveNavIndicator(true));
 
       // кнопка "Выйти" нужна только для сессии обычного браузера — внутри
