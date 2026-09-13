@@ -49,15 +49,45 @@
       // применялся на стороне app.js), поэтому просто подставляем её как есть.
       var deepLink = scheme + "://add/" + url;
 
+      // Ключ подписки приехал в адресной строке. Параметры уже прочитаны —
+      // убираем их из адреса сразу, чтобы ключ не светился ни на экране,
+      // ни в истории браузера, пока человек смотрит на эту страницу.
+      try { history.replaceState(null, "", window.location.pathname); } catch (e) {}
+
+      // Когда приложение перехватывает ссылку, страница уходит в фон —
+      // это единственный сигнал, что передача состоялась. Оставлять за
+      // собой вкладку с ключом в кнопке незачем: стираем её до about:blank.
+      // replace, а не href — чтобы и в истории не осталось страницы, куда
+      // можно вернуться кнопкой «назад».
+      //
+      // Окно короткое: уход в фон спустя минуту — это человек свернул
+      // браузер по своим делам, а не приложение открылось, и тогда
+      // запасная кнопка ему ещё пригодится.
+      function blankAfterHandoff() {
+        var deadline = Date.now() + 6000;
+        function gone() {
+          if (Date.now() > deadline) return;
+          window.location.replace("about:blank");
+        }
+        document.addEventListener("visibilitychange", function onVis() {
+          if (!document.hidden) return;
+          document.removeEventListener("visibilitychange", onVis);
+          gone();
+        });
+        window.addEventListener("pagehide", gone, { once: true });
+      }
+
       manualBtn.href = deepLink;
       manualBtn.onclick = function (e) {
         e.preventDefault();
+        blankAfterHandoff();
         window.location.href = deepLink;
       };
 
       // Автоматическая попытка открыть сразу при загрузке страницы —
       // сработает, если системный браузер разрешает переход по кастомной
       // схеме без предварительного клика пользователя (обычно разрешает).
+      blankAfterHandoff();
       window.location.replace(deepLink);
     })();
   </script>
