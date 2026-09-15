@@ -412,6 +412,14 @@
       </div>
     </div>
 
+    <!-- Меню по долгому нажатию (устройства, промокоды). Пункты рисует
+         openContextMenu в app.js. Отдельное от шторок: оно не «приезжает»
+         снизу, а раскрывается у самой карточки, как системное контекстное
+         меню, — связь с тем, что нажали, видна. -->
+    <div id="ctx-overlay" class="ctx-overlay hidden">
+      <div class="ctx-menu" id="ctx-menu" role="menu"></div>
+    </div>
+
     <div id="device-delete-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>

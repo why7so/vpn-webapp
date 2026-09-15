@@ -712,6 +712,23 @@ body {
   gap: 12px;
 }
 
+/* Карточку зажимают — системе это знать незачем: ни выделения текста, ни
+   iOS-подсказки «Скопировать», ни серой вспышки Android. Раскрытое
+   подтверждение удаления промокода не сжимаем: там жмут кнопки внутри. */
+.device-card,
+.promo-card {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.device-card:active,
+.promo-card:not(.is-confirming):active {
+  transform: scale(0.985);
+}
+
 /* Отключённое глушим целиком, но не прячем: его надо видеть, чтобы вернуть. */
 .device-card.is-blocked .device-name,
 .device-card.is-blocked .device-meta {
@@ -1448,6 +1465,170 @@ body.scroll-locked {
 
   .modal-card {
     background: var(--surface);
+  }
+}
+
+/* ── Контекстное меню устройства ───────────────────────────────────────
+   Раскрывается у карточки, а не снизу: это ответ на нажатие в конкретном
+   месте, и место должно быть видно. Страница под ним размывается тем же
+   стеклом, что и под шторками. */
+.ctx-overlay {
+  position: fixed;
+  inset: 0;
+  background: var(--scrim);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  z-index: 210;
+  animation: scrim-in 0.2s ease;
+}
+
+.ctx-overlay.is-closing {
+  animation: scrim-out 0.18s ease forwards;
+}
+
+.ctx-menu {
+  position: fixed;
+  min-width: 232px;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border-radius: 18px;
+  background: var(--glass-sheet);
+  backdrop-filter: blur(26px) saturate(165%);
+  -webkit-backdrop-filter: blur(26px) saturate(165%);
+  border: 1px solid var(--glass-border);
+  box-shadow: inset 0 1px 0 var(--glass-highlight-2), 0 18px 44px rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  transform: scale(0.86);
+  opacity: 0;
+}
+
+@keyframes ctx-in {
+  from {
+    transform: scale(0.86);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@keyframes ctx-out {
+  from {
+    transform: scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: scale(0.9);
+    opacity: 0;
+  }
+}
+
+.ctx-menu.is-open {
+  animation: ctx-in 0.26s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.ctx-overlay.is-closing .ctx-menu {
+  animation: ctx-out 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
+}
+
+.ctx-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.ctx-item + .ctx-item {
+  position: relative;
+}
+
+/* Тонкая линия между пунктами — отступом от значка, как в системных меню. */
+.ctx-item + .ctx-item::before {
+  content: "";
+  position: absolute;
+  left: 14px;
+  right: 14px;
+  top: 0;
+  height: 1px;
+  background: var(--glass-border);
+}
+
+.ctx-item:active {
+  background: var(--glass-highlight);
+}
+
+.ctx-item.danger {
+  color: var(--danger);
+}
+
+.ctx-item-icon {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.ctx-item-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ctx-overlay {
+    background: var(--scrim-solid);
+  }
+
+  .ctx-menu {
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .ctx-overlay,
+  .ctx-menu {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .ctx-overlay {
+    background: var(--scrim-solid);
+  }
+
+  .ctx-menu {
+    background: var(--surface);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ctx-overlay,
+  .ctx-overlay.is-closing,
+  .ctx-menu.is-open,
+  .ctx-overlay.is-closing .ctx-menu {
+    animation: none;
+  }
+
+  .ctx-menu.is-open {
+    transform: none;
+    opacity: 1;
+  }
+
+  .device-card,
+  .promo-card {
+    transition: none;
   }
 }
 

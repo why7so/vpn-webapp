@@ -218,6 +218,8 @@
     deviceRenameInput: document.getElementById("device-rename-input"),
     deviceRenameSave: document.getElementById("device-rename-save"),
     deviceRenameCancel: document.getElementById("device-rename-cancel"),
+    ctxOverlay: document.getElementById("ctx-overlay"),
+    ctxMenu: document.getElementById("ctx-menu"),
     deviceDeleteModal: document.getElementById("device-delete-modal"),
     deviceDeleteText: document.getElementById("device-delete-text"),
     deviceDeleteApply: document.getElementById("device-delete-apply"),
@@ -1478,6 +1480,13 @@
     '<svg viewBox="2.00 2.77 20 20" fill="currentColor">' +
     '<path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9z">' +
     '</path></svg>';
+  // Квадрат со стрелкой вверх — «поделиться» в том виде, в каком его знают
+  // с телефона. Обводкой, а не заливкой: залитый квадрат читался бы как
+  // кнопка «стоп».
+  const ICON_SHARE =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
   // Какое устройство сейчас в шторке. Держим id, а не сам объект: список
   // между открытием и сохранением может перерисоваться.
   let sheetDeviceId = null;
@@ -1515,6 +1524,137 @@
   els.deviceRenameInput.onkeydown = (e) => {
     if (e.key === "Enter") els.deviceRenameSave.onclick();
   };
+
+  // ── Меню по долгому нажатию ──────────────────────────────────────────
+  // Долгое нажатие на карточку — то же, что кнопки на ней, но так, как
+  // привык палец: зажал — всплыло меню у самой карточки. Кнопки остаются:
+  // долгое нажатие ничем себя не выдаёт, и без них человек не узнал бы, что
+  // с карточкой вообще что-то можно сделать.
+  const LONG_PRESS_MS = 450;
+  // Сдвиг пальца, после которого это уже прокрутка, а не нажатие.
+  const LONG_PRESS_SLOP = 8;
+  let ctxOpen = false;
+
+  // items: [{ label, icon, danger, onSelect }]. Пункт срабатывает после
+  // того, как меню закрылось, — шторка, которую он открывает, не должна
+  // появляться под ещё живым размытием.
+  function openContextMenu(anchor, items) {
+    if (ctxOpen) return;
+    ctxOpen = true;
+    const overlay = els.ctxOverlay;
+    const menu = els.ctxMenu;
+    menu.innerHTML = "";
+    items.forEach((item) => {
+      const btn = document.createElement("button");
+      btn.className = "ctx-item" + (item.danger ? " danger" : "");
+      btn.setAttribute("role", "menuitem");
+      const icon = document.createElement("span");
+      icon.className = "ctx-item-icon";
+      icon.setAttribute("aria-hidden", "true");
+      icon.innerHTML = item.icon || "";
+      btn.appendChild(icon);
+      btn.appendChild(document.createTextNode(item.label));
+      btn.onclick = () => closeContextMenu(item.onSelect);
+      menu.appendChild(btn);
+    });
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
+
+    // Меню — у правого края карточки, под ней; не влезает снизу — над ней.
+    // Размер известен только после показа, поэтому сначала показываем,
+    // потом меряем: кадр между ними глаз не замечает.
+    overlay.classList.remove("hidden");
+    const rect = anchor.getBoundingClientRect();
+    const w = menu.offsetWidth;
+    const h = menu.offsetHeight;
+    const pad = 12;
+    const gap = 8;
+    let left = Math.max(pad, Math.min(rect.right - w, window.innerWidth - w - pad));
+    let top = rect.bottom + gap;
+    let origin = "top right";
+    if (top + h > window.innerHeight - pad) {
+      top = Math.max(pad, rect.top - h - gap);
+      origin = "bottom right";
+    }
+    menu.style.left = left + "px";
+    menu.style.top = top + "px";
+    menu.style.transformOrigin = origin;
+    menu.classList.add("is-open");
+  }
+
+  function closeContextMenu(after) {
+    const overlay = els.ctxOverlay;
+    const menu = els.ctxMenu;
+    if (overlay.classList.contains("hidden")) return;
+    ctxOpen = false;
+    overlay.classList.add("is-closing");
+    menu.classList.remove("is-open");
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      overlay.classList.remove("is-closing");
+      overlay.classList.add("hidden");
+      if (after) after();
+    };
+    menu.addEventListener("animationend", finish, { once: true });
+    setTimeout(finish, 260);
+  }
+
+  els.ctxOverlay.onclick = (e) => {
+    if (e.target === els.ctxOverlay) closeContextMenu();
+  };
+
+  // Долгое нажатие ловим сами, по указателю: iOS в WebView не шлёт
+  // contextmenu, а Android шлёт — и его тоже принимаем, чтобы не ждать
+  // таймер дважды. Клик, который приходит следом за долгим нажатием,
+  // глотаем, иначе отпущенный палец попадал бы по кнопке под меню.
+  function attachLongPress(card, onPress) {
+    let timer = null;
+    let startX = 0;
+    let startY = 0;
+    let fired = false;
+
+    const cancel = () => {
+      if (timer) clearTimeout(timer);
+      timer = null;
+    };
+
+    card.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0 && e.pointerType === "mouse") return;
+      fired = false;
+      startX = e.clientX;
+      startY = e.clientY;
+      cancel();
+      timer = setTimeout(() => {
+        timer = null;
+        fired = true;
+        onPress();
+      }, LONG_PRESS_MS);
+    });
+    card.addEventListener("pointermove", (e) => {
+      if (!timer) return;
+      if (Math.abs(e.clientX - startX) > LONG_PRESS_SLOP || Math.abs(e.clientY - startY) > LONG_PRESS_SLOP) cancel();
+    });
+    card.addEventListener("pointerup", cancel);
+    card.addEventListener("pointercancel", cancel);
+    card.addEventListener("pointerleave", cancel);
+    card.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      cancel();
+      fired = true;
+      onPress();
+    });
+    card.addEventListener(
+      "click",
+      (e) => {
+        if (!fired) return;
+        fired = false;
+        e.stopPropagation();
+        e.preventDefault();
+      },
+      true
+    );
+  }
 
   els.deviceDeleteCancel.onclick = () => closeSheet(els.deviceDeleteModal);
   els.deviceDeleteModal.onclick = (e) => {
@@ -1603,6 +1743,12 @@
       actions.appendChild(del);
 
       card.appendChild(actions);
+      attachLongPress(card, () =>
+        openContextMenu(card, [
+          { label: "Переименовать", icon: ICON_PENCIL, onSelect: () => openRenameModal(device) },
+          { label: "Удалить устройство", icon: ICON_TRASH, danger: true, onSelect: () => openDeleteModal(device) },
+        ])
+      );
       list.appendChild(card);
     });
   }
@@ -2040,18 +2186,44 @@
 
         card.appendChild(row);
       } else {
-        const del = document.createElement("button");
-        del.className = "device-btn danger";
-        del.textContent = "Удалить";
-        del.onclick = () => {
+        const askDelete = () => {
           pendingPromoDelete = p.code;
           renderAdminPromos(lastAdminPromos);
         };
+        const del = document.createElement("button");
+        del.className = "device-btn danger";
+        del.textContent = "Удалить";
+        del.onclick = askDelete;
         card.appendChild(del);
+
+        attachLongPress(card, () =>
+          openContextMenu(card, [
+            { label: "Поделиться", icon: ICON_SHARE, onSelect: () => sharePromo(p) },
+            { label: "Удалить промокод", icon: ICON_TRASH, danger: true, onSelect: askDelete },
+          ])
+        );
       }
 
       box.appendChild(card);
     });
+  }
+
+  // Ссылку «Активировать» отдаёт бэкенд — ту же, что бот вешает на кнопку.
+  // Без неё (BOT_USERNAME не задан) делимся самим кодом: его можно ввести
+  // руками в поле промокода.
+  function sharePromo(p) {
+    const text = "Промокод " + p.code + " — " + promoValueText(p);
+    const url = p.link || "";
+    if (tg) {
+      tg.openTelegramLink(
+        "https://t.me/share/url?url=" + encodeURIComponent(url || p.code) + "&text=" + encodeURIComponent(text)
+      );
+    } else if (navigator.share) {
+      navigator.share(url ? { title: text, url: url } : { text: text }).catch(() => {});
+    } else {
+      if (navigator.clipboard) navigator.clipboard.writeText(url || p.code);
+      showToast("Скопировано — отправьте вручную");
+    }
   }
 
   function renderAdminPromoForm() {
