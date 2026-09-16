@@ -716,7 +716,8 @@ body {
    iOS-подсказки «Скопировать», ни серой вспышки Android. Раскрытое
    подтверждение удаления промокода не сжимаем: там жмут кнопки внутри. */
 .device-card,
-.promo-card {
+.promo-card,
+.node-card {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -725,7 +726,8 @@ body {
 }
 
 .device-card:active,
-.promo-card:not(.is-confirming):active {
+.promo-card:not(.is-confirming):active,
+.node-card:active {
   transform: scale(0.985);
 }
 
@@ -1656,6 +1658,7 @@ body.scroll-locked {
 
   .device-card,
   .promo-card,
+  .node-card,
   .device-slot {
     transition: none;
   }
@@ -1877,6 +1880,28 @@ body.scroll-locked {
   margin-bottom: 10px;
 }
 
+/* Перенос: едущая карточка над остальными, с тенью и без своей
+   анимации — за пальцем надо успевать, а не догонять. Соседи, наоборот,
+   раздвигаются плавно; и сама она в конце плавно доезжает до просвета. */
+.node-card.is-dragging {
+  position: relative;
+  z-index: 5;
+  transition: none;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+}
+
+.node-card.is-dragging.is-dropping,
+.node-card.is-shifting {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .node-card.is-dragging.is-dropping,
+  .node-card.is-shifting {
+    transition: none;
+  }
+}
+
 .node-head {
   display: flex;
   align-items: center;
@@ -1948,64 +1973,6 @@ body.scroll-locked {
 .node-card.off .node-protos,
 .node-card.off .node-stat {
   opacity: 0.5;
-}
-
-/* ---------- переключатель ---------- */
-
-/* Дорожка 46×28 с шариком 22: пропорции обычного системного переключателя,
-   в котором состояние читается формой, а не только цветом — на светлой
-   теме и при дальтонизме зелёный от серого отличим не всегда. */
-.switch {
-  position: relative;
-  width: 46px;
-  height: 28px;
-  flex-shrink: 0;
-  border: 0;
-  padding: 0;
-  border-radius: 999px;
-  background: var(--track);
-  cursor: pointer;
-  transition: background 0.2s var(--page-ease);
-}
-
-/* Цель нажатия добирается невидимым полем: сама дорожка ниже 44pt, а
-   промахнуться по выключателю ноды — это выключить не ту машину. */
-.switch::before {
-  content: "";
-  position: absolute;
-  inset: -8px;
-}
-
-.switch i {
-  position: absolute;
-  top: 3px;
-  left: 3px;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  background: #fff;
-  box-shadow: var(--shadow-pop);
-  transition: transform 0.2s var(--page-ease);
-}
-
-.switch.on {
-  background: var(--accent);
-}
-
-.switch.on i {
-  transform: translateX(18px);
-}
-
-.switch:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .switch,
-  .switch i {
-    transition: none;
-  }
 }
 
 .node-stat {

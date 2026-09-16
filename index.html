@@ -283,6 +283,10 @@
         <div class="stat-grid" id="admin-tiles"></div>
 
         <div class="section-title">Ноды</div>
+        <div class="admin-note">
+          Зажмите ноду, чтобы переименовать, убрать из подписки или удалить.
+          Зажмите и потяните — чтобы переставить: порядок здесь тот же, что у серверов в подписке.
+        </div>
         <div id="admin-nodes"></div>
 
         <div class="section-title">Промокоды</div>
@@ -389,8 +393,8 @@
     <div id="device-rename-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <div class="modal-title">Переименовать устройство</div>
-        <div class="email-hint">Название видно только вам, на подключение не влияет.</div>
+        <div class="modal-title" id="rename-title">Переименовать устройство</div>
+        <div class="email-hint" id="rename-hint">Название видно только вам, на подключение не влияет.</div>
         <input class="input" id="device-rename-input" maxlength="40" />
         <div class="row">
           <button class="btn secondary" id="device-rename-cancel">Отмена</button>
@@ -431,7 +435,7 @@
     <div id="device-delete-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>
-        <div class="modal-title">Удалить устройство</div>
+        <div class="modal-title" id="confirm-title">Удалить устройство</div>
         <div class="email-hint" id="device-delete-text"></div>
         <div class="row">
           <button class="btn secondary" id="device-delete-cancel">Отмена</button>

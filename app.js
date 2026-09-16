@@ -218,6 +218,9 @@
     devicesCount: document.getElementById("devices-count"),
     devicesLimit: document.getElementById("devices-limit"),
     deviceRenameModal: document.getElementById("device-rename-modal"),
+    renameTitle: document.getElementById("rename-title"),
+    renameHint: document.getElementById("rename-hint"),
+    confirmTitle: document.getElementById("confirm-title"),
     deviceRenameInput: document.getElementById("device-rename-input"),
     deviceRenameSave: document.getElementById("device-rename-save"),
     deviceRenameCancel: document.getElementById("device-rename-cancel"),
@@ -1488,6 +1491,10 @@
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
     'stroke-linecap="round" stroke-linejoin="round">' +
     '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg>';
+  // Кнопка питания — «убрать из подписки» / «вернуть».
+  const ICON_POWER =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round"><path d="M12 3v9M6.3 6.3a8 8 0 1 0 11.4 0"/></svg>';
   // Квадрат со стрелкой вверх — «поделиться» в том виде, в каком его знают
   // с телефона. Обводкой, а не заливкой: залитый квадрат читался бы как
   // кнопка «стоп».
@@ -1495,27 +1502,54 @@
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
     'stroke-linecap="round" stroke-linejoin="round">' +
     '<path d="M12 3v12M8 7l4-4 4 4M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
-  // Какое устройство сейчас в шторке. Держим id, а не сам объект: список
-  // между открытием и сохранением может перерисоваться.
-  let sheetDeviceId = null;
+  // Две шторки на всех: «переименовать» с полем и «подтвердить» с красной
+  // кнопкой. Что именно переименовываем и что подтверждаем, задаёт тот,
+  // кто открыл, — устройства и ноды в админке ходят через одни и те же.
+  // Держим колбэк, а не объект: список между открытием и сохранением
+  // может перерисоваться.
+  let renameOnSave = null;
+  let confirmOnApply = null;
 
-  function openRenameModal(device) {
-    sheetDeviceId = device.id;
-    els.deviceRenameInput.value = device.custom_name || "";
-    els.deviceRenameInput.placeholder = device.auto_name;
+  function openRenameSheet(o) {
+    renameOnSave = o.onSave;
+    els.renameTitle.textContent = o.title;
+    els.renameHint.textContent = o.hint;
+    els.deviceRenameInput.value = o.value || "";
+    els.deviceRenameInput.placeholder = o.placeholder || "";
+    els.deviceRenameInput.maxLength = o.maxLength || 40;
     els.deviceRenameModal.classList.remove("hidden");
     // Фокус после кадра: до появления шторки поле ещё не на экране, и
     // клавиатура на iOS открывалась поверх пустого места.
     requestAnimationFrame(() => els.deviceRenameInput.focus());
   }
 
-  function openDeleteModal(device) {
-    sheetDeviceId = device.id;
-    els.deviceDeleteText.textContent =
-      "«" + device.name + "» пропадёт из списка и освободит место. " +
-      "Доступ при этом не отзывается: подписка на нём продолжит работать, и " +
-      "устройство появится снова, когда обновит её.";
+  function openConfirmSheet(o) {
+    confirmOnApply = o.onApply;
+    els.confirmTitle.textContent = o.title;
+    els.deviceDeleteText.textContent = o.text;
+    els.deviceDeleteApply.textContent = o.apply || "Удалить";
     els.deviceDeleteModal.classList.remove("hidden");
+  }
+
+  function openRenameModal(device) {
+    openRenameSheet({
+      title: "Переименовать устройство",
+      hint: "Название видно только вам, на подключение не влияет.",
+      value: device.custom_name || "",
+      placeholder: device.auto_name,
+      onSave: (name) => renameDevice(device.id, name),
+    });
+  }
+
+  function openDeleteModal(device) {
+    openConfirmSheet({
+      title: "Удалить устройство",
+      text:
+        "«" + device.name + "» пропадёт из списка и освободит место. " +
+        "Доступ при этом не отзывается: подписка на нём продолжит работать, и " +
+        "устройство появится снова, когда обновит её.",
+      onApply: () => deleteDevice(device.id),
+    });
   }
 
   els.deviceRenameCancel.onclick = () => closeSheet(els.deviceRenameModal);
@@ -1523,11 +1557,12 @@
     if (e.target === els.deviceRenameModal) closeSheet(els.deviceRenameModal);
   };
   els.deviceRenameSave.onclick = () => {
-    // id снимаем до закрытия: закрытие сбрасывает состояние шторки, а
+    // Колбэк снимаем до закрытия: закрытие сбрасывает состояние шторки, а
     // запрос уходит уже после её анимации.
-    const id = sheetDeviceId;
+    const fn = renameOnSave;
+    renameOnSave = null;
     closeSheet(els.deviceRenameModal);
-    if (id) renameDevice(id, els.deviceRenameInput.value);
+    if (fn) fn(els.deviceRenameInput.value);
   };
   els.deviceRenameInput.onkeydown = (e) => {
     if (e.key === "Enter") els.deviceRenameSave.onclick();
@@ -1609,13 +1644,13 @@
     menu.classList.add("is-open");
   }
 
-  function closeContextMenu(after) {
+  // instant — без анимации закрытия: начался перенос, и карточка под
+  // пальцем уже поехала, задерживаться размытию не на чем.
+  function closeContextMenu(after, instant) {
     const overlay = els.ctxOverlay;
     const menu = els.ctxMenu;
     if (overlay.classList.contains("hidden")) return;
     ctxOpen = false;
-    overlay.classList.add("is-closing");
-    menu.classList.remove("is-open");
     let done = false;
     const finish = () => {
       if (done) return;
@@ -1626,8 +1661,124 @@
       if (ghost) ghost.remove();
       if (after) after();
     };
+    if (instant) {
+      menu.classList.remove("is-open");
+      finish();
+      return;
+    }
+    overlay.classList.add("is-closing");
+    menu.classList.remove("is-open");
     menu.addEventListener("animationend", finish, { once: true });
     setTimeout(finish, 260);
+  }
+
+  // ── Перенос карточки в списке ──────────────────────────────────────────
+  // Карточка едет за пальцем, соседи раздвигаются; отпустил — встаёт в
+  // просвет, и onDone получает детей списка в новом порядке. Всё на
+  // transform: DOM не трогаем до самого конца, поэтому геометрию можно
+  // снять один раз в начале. Координаты — страничные, а не экранные:
+  // у края экрана список сам подкручивается, и экранные бы поплыли.
+  function startDrag(card, e, onDone) {
+    const list = card.parentNode;
+    const items = Array.from(list.children);
+    const i = items.indexOf(card);
+    if (i < 0) return;
+    const rects = items.map((el) => {
+      const r = el.getBoundingClientRect();
+      return { top: r.top + window.scrollY, bottom: r.bottom + window.scrollY, height: r.height };
+    });
+    const gap = items.length > 1 ? Math.max(0, rects[1].top - rects[0].bottom) : 0;
+    const slot = rects[i].height + gap;
+    const startY = e.clientY + window.scrollY;
+    let lastClientY = e.clientY;
+    let target = i;
+    let raf = 0;
+
+    card.classList.add("is-dragging");
+    items.forEach((el) => {
+      if (el !== card) el.classList.add("is-shifting");
+    });
+    try {
+      card.setPointerCapture(e.pointerId);
+    } catch (err) {
+      /* мышь без capture тоже сойдёт */
+    }
+    if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
+
+    function layout() {
+      const dy = lastClientY + window.scrollY - startY;
+      card.style.transform = "translateY(" + dy + "px) scale(1.03)";
+      // Куда встанет: сколько соседей остаётся выше центра карточки.
+      const center = rects[i].top + rects[i].height / 2 + dy;
+      let t = 0;
+      items.forEach((el, k) => {
+        if (k !== i && rects[k].top + rects[k].height / 2 < center) t++;
+      });
+      if (t !== target) {
+        target = t;
+        if (tg && tg.HapticFeedback) tg.HapticFeedback.selectionChanged();
+      }
+      items.forEach((el, k) => {
+        if (k === i) return;
+        let shift = 0;
+        if (k > i && k <= target) shift = -slot;
+        else if (k < i && k >= target) shift = slot;
+        el.style.transform = shift ? "translateY(" + shift + "px)" : "";
+      });
+    }
+
+    // Подкрутка у края экрана: держишь палец внизу — список едет вверх.
+    function autoscroll() {
+      const edge = 72;
+      const vh = window.innerHeight;
+      let v = 0;
+      if (lastClientY < edge) v = -(edge - lastClientY) / 5;
+      else if (lastClientY > vh - edge) v = (lastClientY - (vh - edge)) / 5;
+      if (v) {
+        window.scrollBy(0, v);
+        layout();
+      }
+      raf = requestAnimationFrame(autoscroll);
+    }
+
+    const onMove = (ev) => {
+      lastClientY = ev.clientY;
+      layout();
+    };
+    const onUp = () => {
+      cancelAnimationFrame(raf);
+      card.removeEventListener("pointermove", onMove);
+      card.removeEventListener("pointerup", onUp);
+      card.removeEventListener("pointercancel", onUp);
+      // Доезжает до просвета, и только потом переставляем в DOM: иначе
+      // карточка прыгнула бы на место, а соседи — обратно.
+      const finalDy =
+        target > i ? rects[target].bottom - rects[i].bottom : target < i ? rects[target].top - rects[i].top : 0;
+      card.classList.add("is-dropping");
+      card.style.transform = "translateY(" + finalDy + "px)";
+      let done = false;
+      const finish = () => {
+        if (done) return;
+        done = true;
+        items.forEach((el) => {
+          el.style.transform = "";
+          el.classList.remove("is-shifting");
+        });
+        card.classList.remove("is-dragging", "is-dropping");
+        if (target !== i) {
+          if (target > i) list.insertBefore(card, items[target].nextSibling);
+          else list.insertBefore(card, items[target]);
+          onDone(Array.from(list.children));
+        }
+      };
+      card.addEventListener("transitionend", finish, { once: true });
+      setTimeout(finish, 300);
+    };
+    card.addEventListener("pointermove", onMove);
+    card.addEventListener("pointerup", onUp);
+    card.addEventListener("pointercancel", onUp);
+    layout();
+    raf = requestAnimationFrame(autoscroll);
   }
 
   els.ctxOverlay.onclick = (e) => {
@@ -1638,20 +1789,30 @@
   // contextmenu, а Android шлёт — и его тоже принимаем, чтобы не ждать
   // таймер дважды. Клик, который приходит следом за долгим нажатием,
   // глотаем, иначе отпущенный палец попадал бы по кнопке под меню.
-  function attachLongPress(card, onPress) {
+  // onDrag — необязательный: если задан, то после долгого нажатия
+  // движение пальца не отменяет ничего, а начинает перенос — как на
+  // домашнем экране iPhone: зажал, появилось меню, повёл — меню ушло,
+  // предмет поехал.
+  function attachLongPress(card, onPress, onDrag) {
     let timer = null;
     let startX = 0;
     let startY = 0;
     let fired = false;
+    let dragging = false;
 
     const cancel = () => {
       if (timer) clearTimeout(timer);
       timer = null;
     };
+    const release = () => {
+      cancel();
+      dragging = false;
+    };
 
     card.addEventListener("pointerdown", (e) => {
       if (e.button !== 0 && e.pointerType === "mouse") return;
       fired = false;
+      dragging = false;
       startX = e.clientX;
       startY = e.clientY;
       cancel();
@@ -1662,12 +1823,33 @@
       }, LONG_PRESS_MS);
     });
     card.addEventListener("pointermove", (e) => {
-      if (!timer) return;
-      if (Math.abs(e.clientX - startX) > LONG_PRESS_SLOP || Math.abs(e.clientY - startY) > LONG_PRESS_SLOP) cancel();
+      const moved =
+        Math.abs(e.clientX - startX) > LONG_PRESS_SLOP || Math.abs(e.clientY - startY) > LONG_PRESS_SLOP;
+      if (timer) {
+        if (moved) cancel();
+        return;
+      }
+      if (fired && onDrag && !dragging && moved) {
+        dragging = true;
+        closeContextMenu(null, true);
+        onDrag(e);
+      }
     });
-    card.addEventListener("pointerup", cancel);
-    card.addEventListener("pointercancel", cancel);
+    card.addEventListener("pointerup", release);
+    card.addEventListener("pointercancel", release);
     card.addEventListener("pointerleave", cancel);
+    // После долгого нажатия палец на карточке двигает её, а не страницу.
+    // Запретить прокрутку задним числом можно только так: touch-action
+    // читается в момент касания, а тогда мы ещё не знали, что это будет.
+    if (onDrag) {
+      card.addEventListener(
+        "touchmove",
+        (e) => {
+          if (fired) e.preventDefault();
+        },
+        { passive: false }
+      );
+    }
     card.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       cancel();
@@ -1691,9 +1873,10 @@
     if (e.target === els.deviceDeleteModal) closeSheet(els.deviceDeleteModal);
   };
   els.deviceDeleteApply.onclick = () => {
-    const id = sheetDeviceId;
+    const fn = confirmOnApply;
+    confirmOnApply = null;
     closeSheet(els.deviceDeleteModal);
-    if (id) deleteDevice(id);
+    if (fn) fn();
   };
 
   function renderDevicesPage(devices) {
@@ -1982,8 +2165,7 @@
   // цена ошибки мала: нода уходит из подписки, а не из базы, ключи reality
   // остаются на месте. Спрашивать «точно?» на обратимом действии значит
   // приучать нажимать «да» не глядя.
-  async function setNodeEnabled(node, enabled, button) {
-    button.disabled = true;
+  async function setNodeEnabled(node, enabled) {
     try {
       await api("/api/admin/node", {
         method: "POST",
@@ -1993,8 +2175,94 @@
       await refreshAdmin();
     } catch (e) {
       showToast(e.message, true);
-      button.disabled = false;
     }
+  }
+
+  async function renameNode(node, name) {
+    name = name.trim();
+    if (!name || name === node.name) return;
+    try {
+      await api("/api/admin/node/rename", {
+        method: "POST",
+        body: JSON.stringify({ machine_id: node.machine_id, name: name }),
+      });
+      showToast("Нода теперь называется " + name);
+      await refreshAdmin();
+    } catch (e) {
+      showToast(e.message, true);
+    }
+  }
+
+  async function deleteNode(node) {
+    try {
+      await api("/api/admin/node/delete", {
+        method: "POST",
+        body: JSON.stringify({ machine_id: node.machine_id }),
+      });
+      showToast("Нода " + node.name + " удалена");
+      await refreshAdmin();
+    } catch (e) {
+      showToast(e.message, true);
+    }
+  }
+
+  // Новый порядок — на сервер целиком: он же порядок серверов в подписке.
+  // Не вышло — перечитываем сводку, чтобы панель не показывала порядок,
+  // которого нет.
+  async function saveNodeOrder(cards) {
+    const ids = cards.map((c) => c.dataset.machine).filter(Boolean);
+    try {
+      await api("/api/admin/node/order", {
+        method: "POST",
+        body: JSON.stringify({ machine_ids: ids }),
+      });
+      showToast("Порядок серверов сохранён");
+    } catch (e) {
+      showToast(e.message, true);
+      await refreshAdmin();
+    }
+  }
+
+  // Меню ноды. Выключатель на карточке был обратим и без вопросов;
+  // переименование — тоже, а вот удаление стирает ключи reality из базы,
+  // и вернуть ноду можно только /node_add в боте — поэтому спрашиваем.
+  function openNodeMenu(card, n) {
+    const rows = n.protocols ? n.protocols.length : 1;
+    openContextMenu(card, [
+      {
+        label: "Переименовать",
+        icon: ICON_PENCIL,
+        onSelect: () =>
+          openRenameSheet({
+            title: "Переименовать ноду",
+            hint: "Так сервер подписан у всех пользователей в списке серверов.",
+            value: n.name,
+            placeholder: n.name,
+            maxLength: 64,
+            onSave: (name) => renameNode(n, name),
+          }),
+      },
+      {
+        label: n.enabled ? "Убрать из подписки" : "Вернуть в подписку",
+        icon: ICON_POWER,
+        onSelect: () => setNodeEnabled(n, !n.enabled),
+      },
+      {
+        label: "Удалить ноду",
+        icon: ICON_TRASH,
+        danger: true,
+        onSelect: () =>
+          openConfirmSheet({
+            title: "Удалить ноду",
+            text:
+              "«" + n.name + "» пропадёт из базы со всеми протоколами" +
+              (rows > 1 ? " (" + rows + " строки)" : "") +
+              ". У клиентов исчезнет при следующем обновлении подписки. " +
+              "Вернуть можно только заново через /node_add в боте — ключи придётся вводить снова.",
+            onApply: () => deleteNode(n),
+          }),
+      },
+    ]);
   }
 
   function renderAdminNodes(nodes) {
@@ -2034,19 +2302,13 @@
       state.textContent = n.up ? "online" : n.state || "offline";
       head.appendChild(state);
 
-      // Выключатель показывает не состояние машины, а наше решение отдавать
-      // её. Поэтому он рядом со значком состояния, а не вместо него: нода
-      // бывает живой и выключенной одновременно, и это разные строки.
-      const sw = document.createElement("button");
-      sw.className = "switch" + (n.enabled ? " on" : "");
-      sw.setAttribute("role", "switch");
-      sw.setAttribute("aria-checked", n.enabled ? "true" : "false");
-      sw.setAttribute("aria-label", "Отдавать в подписке");
-      sw.title = n.enabled ? "Убрать из подписки" : "Вернуть в подписку";
-      sw.appendChild(document.createElement("i"));
-      sw.onclick = () => setNodeEnabled(n, !n.enabled, sw);
-      head.appendChild(sw);
       card.appendChild(head);
+      card.dataset.machine = n.machine_id;
+      attachLongPress(
+        card,
+        () => openNodeMenu(card, n),
+        (e) => startDrag(card, e, saveNodeOrder)
+      );
 
       if (!n.enabled) card.classList.add("off");
 
