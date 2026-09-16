@@ -729,6 +729,64 @@ body {
   transform: scale(0.985);
 }
 
+/* Свободное место под устройство: та же форма, что у карточки
+   устройства, но пунктиром и без заливки — ячейка, а не предмет. Кнопка
+   целиком, чтобы цель нажатия была вся карточка. */
+.device-slot {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 13px 16px;
+  margin-bottom: 10px;
+  border: 1.5px dashed var(--accent-soft-2);
+  border-radius: var(--r-md);
+  background: var(--accent-glow);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.2s ease;
+}
+
+.device-slot:active {
+  transform: scale(0.985);
+  border-color: var(--accent);
+}
+
+.device-slot-icon {
+  width: 46px;
+  height: 46px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.device-slot-icon svg {
+  width: 22px;
+  height: 22px;
+}
+
+.device-slot-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.device-slot-title {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.device-slot-sub {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
 /* Отключённое глушим целиком, но не прячем: его надо видеть, чтобы вернуть. */
 .device-card.is-blocked .device-name,
 .device-card.is-blocked .device-meta {
@@ -770,16 +828,6 @@ body {
   color: var(--danger);
 }
 
-/* Значки — в строку. Столбцом стояли подписи «Имя» и «Отключить»: два
-   слова разной длины иначе не выровнять. Круглые значки одинакового
-   размера рядом занимают меньше высоты и не растягивают карточку. */
-.device-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
 .device-btn {
   border: none;
   border-radius: 999px;
@@ -794,52 +842,6 @@ body {
 
 .device-btn.danger {
   color: var(--danger);
-}
-
-/* Значок вместо слова. «Имя» и «Отключить» рядом читались как два текста
-   одинакового веса, и глаз каждый раз разбирал, где какое; карандаш, крест
-   и корзина различаются формой, а не чтением.
-
-   36px: значков два, и место под имя устройства они не отнимают. Цель
-   нажатия добирается невидимым полем ниже — по правилу она не меньше 44pt. */
-.device-icon-btn {
-  position: relative;
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
-  border: none;
-  border-radius: 999px;
-  background: var(--surface-2);
-  color: var(--text-dim);
-  cursor: pointer;
-  transition: color 0.2s ease, background-color 0.2s ease, transform 0.16s ease;
-}
-
-.device-icon-btn::before {
-  content: "";
-  position: absolute;
-  inset: -6px;
-}
-
-.device-icon-btn:active {
-  transform: scale(0.92);
-}
-
-.device-icon-btn.danger {
-  color: var(--danger);
-  background: var(--danger-soft);
-}
-
-.device-icon-btn.accent {
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.device-icon-btn svg {
-  width: 17px;
-  height: 17px;
 }
 
 .device-btn:active {
@@ -1486,6 +1488,30 @@ body.scroll-locked {
   animation: scrim-out 0.18s ease forwards;
 }
 
+/* Копия зажатой карточки над размытием. Не кнопка и не карточка — на
+   неё нельзя нажать, она только показывает, что именно выбрано. Чуть
+   приподнята тенью: над размытым фоном плоская карточка сливалась бы
+   с ним. */
+.ctx-ghost {
+  position: fixed;
+  margin: 0;
+  pointer-events: none;
+  transform: none;
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.35);
+  animation: ctx-ghost-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes ctx-ghost-in {
+  from {
+    transform: scale(0.985);
+    box-shadow: none;
+  }
+}
+
+.ctx-overlay.is-closing .ctx-ghost {
+  animation: scrim-out 0.18s ease forwards;
+}
+
 .ctx-menu {
   position: fixed;
   min-width: 232px;
@@ -1617,7 +1643,9 @@ body.scroll-locked {
   .ctx-overlay,
   .ctx-overlay.is-closing,
   .ctx-menu.is-open,
-  .ctx-overlay.is-closing .ctx-menu {
+  .ctx-overlay.is-closing .ctx-menu,
+  .ctx-ghost,
+  .ctx-overlay.is-closing .ctx-ghost {
     animation: none;
   }
 
@@ -1627,7 +1655,8 @@ body.scroll-locked {
   }
 
   .device-card,
-  .promo-card {
+  .promo-card,
+  .device-slot {
     transition: none;
   }
 }

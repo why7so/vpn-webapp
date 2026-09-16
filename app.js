@@ -212,6 +212,9 @@
     devicesQtyLabel: document.getElementById("devices-qty-label"),
     devicesTrack: document.getElementById("devices-track"),
     devicesList: document.getElementById("devices-list"),
+    devicesSlots: document.getElementById("devices-slots"),
+    devicesBuyTitle: document.getElementById("devices-buy-title"),
+    connectDeviceTitle: document.getElementById("connect-device"),
     devicesCount: document.getElementById("devices-count"),
     devicesLimit: document.getElementById("devices-limit"),
     deviceRenameModal: document.getElementById("device-rename-modal"),
@@ -1480,6 +1483,11 @@
     '<svg viewBox="2.00 2.77 20 20" fill="currentColor">' +
     '<path d="M9 3h6l1 2h4v2H4V5h4l1-2zM6 9h12l-1 11a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L6 9z">' +
     '</path></svg>';
+  // Телефон контуром — для пустого места под устройство.
+  const ICON_PHONE =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+    '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg>';
   // Квадрат со стрелкой вверх — «поделиться» в том виде, в каком его знают
   // с телефона. Обводкой, а не заливкой: залитый квадрат читался бы как
   // кнопка «стоп».
@@ -1526,10 +1534,9 @@
   };
 
   // ── Меню по долгому нажатию ──────────────────────────────────────────
-  // Долгое нажатие на карточку — то же, что кнопки на ней, но так, как
-  // привык палец: зажал — всплыло меню у самой карточки. Кнопки остаются:
-  // долгое нажатие ничем себя не выдаёт, и без них человек не узнал бы, что
-  // с карточкой вообще что-то можно сделать.
+  // Зажал карточку — всплыло меню у неё же, как привык палец. Долгое
+  // нажатие ничем себя не выдаёт, поэтому у устройств про него сказано
+  // подсказкой над списком, а у промокодов рядом остаётся кнопка.
   const LONG_PRESS_MS = 450;
   // Сдвиг пальца, после которого это уже прокрутка, а не нажатие.
   const LONG_PRESS_SLOP = 8;
@@ -1559,11 +1566,32 @@
     });
     if (tg && tg.HapticFeedback) tg.HapticFeedback.impactOccurred("medium");
 
+    // Зажатая карточка остаётся резкой: её копия ложится поверх размытия
+    // ровно на её место. Размытие — это «всё остальное отошло», и предмет,
+    // из-за которого открыто меню, отходить не должен.
+    //
+    // Меряем по центру и offsetWidth, а не по rect целиком: палец ещё на
+    // карточке, она в :active и сжата на полтора процента, и rect отдаёт
+    // сжатые размеры.
+    let rect = anchor.getBoundingClientRect();
+    const w0 = anchor.offsetWidth;
+    const h0 = anchor.offsetHeight;
+    const left0 = rect.left + rect.width / 2 - w0 / 2;
+    const top0 = rect.top + rect.height / 2 - h0 / 2;
+    const ghost = anchor.cloneNode(true);
+    ghost.removeAttribute("id");
+    ghost.classList.add("ctx-ghost");
+    ghost.style.left = left0 + "px";
+    ghost.style.top = top0 + "px";
+    ghost.style.width = w0 + "px";
+    ghost.style.height = h0 + "px";
+    overlay.insertBefore(ghost, menu);
+    rect = { left: left0, top: top0, right: left0 + w0, bottom: top0 + h0 };
+
     // Меню — у правого края карточки, под ней; не влезает снизу — над ней.
     // Размер известен только после показа, поэтому сначала показываем,
     // потом меряем: кадр между ними глаз не замечает.
     overlay.classList.remove("hidden");
-    const rect = anchor.getBoundingClientRect();
     const w = menu.offsetWidth;
     const h = menu.offsetHeight;
     const pad = 12;
@@ -1594,6 +1622,8 @@
       done = true;
       overlay.classList.remove("is-closing");
       overlay.classList.add("hidden");
+      const ghost = overlay.querySelector(".ctx-ghost");
+      if (ghost) ghost.remove();
       if (after) after();
     };
     menu.addEventListener("animationend", finish, { once: true });
@@ -1685,6 +1715,7 @@
 
     els.devicesEmpty.classList.toggle("hidden", devices.length > 0);
     els.devicesNote.classList.toggle("hidden", devices.length === 0);
+    renderDeviceSlots(active, limit);
 
     devices.forEach((device) => {
       const card = document.createElement("div");
@@ -1723,26 +1754,9 @@
 
       card.appendChild(body);
 
-      const actions = document.createElement("div");
-      actions.className = "device-actions";
-
-      const renameBtn = document.createElement("button");
-      renameBtn.className = "device-icon-btn";
-      renameBtn.title = "Переименовать";
-      renameBtn.setAttribute("aria-label", "Переименовать");
-      renameBtn.innerHTML = ICON_PENCIL;
-      renameBtn.onclick = () => openRenameModal(device);
-      actions.appendChild(renameBtn);
-
-      const del = document.createElement("button");
-      del.className = "device-icon-btn danger";
-      del.title = "Удалить из списка";
-      del.setAttribute("aria-label", del.title);
-      del.innerHTML = ICON_TRASH;
-      del.onclick = () => openDeleteModal(device);
-      actions.appendChild(del);
-
-      card.appendChild(actions);
+      // Кнопок на карточке нет: всё — через меню по долгому нажатию, а как
+      // его вызвать, написано над списком. Две кнопки на каждой строке
+      // делали список тяжёлым ради действий, которые нужны раз в полгода.
       attachLongPress(card, () =>
         openContextMenu(card, [
           { label: "Переименовать", icon: ICON_PENCIL, onSelect: () => openRenameModal(device) },
@@ -1751,6 +1765,48 @@
       );
       list.appendChild(card);
     });
+  }
+
+  // Сколько мест свободно и что с этим делать. Карточка на каждое
+  // свободное место, как пустые ячейки: сразу видно, что ещё есть куда
+  // подключить. Лимит исчерпан — одна карточка, но про докупку. Без лимита
+  // (0 — безлимит) — одна карточка «добавить», плодить их бесконечно
+  // не из чего.
+  //
+  // Больше пяти пустых карточек не рисуем: при лимите в десять и одном
+  // подключённом список пустых мест вытеснял бы сами устройства.
+  const MAX_SLOT_CARDS = 5;
+
+  function slotCard(title, sub, onClick) {
+    const card = document.createElement("button");
+    card.className = "device-slot";
+    card.type = "button";
+    card.innerHTML =
+      '<span class="device-slot-icon" aria-hidden="true">' + ICON_PHONE + "</span>" +
+      '<span class="device-slot-body"><span class="device-slot-title"></span>' +
+      '<span class="device-slot-sub"></span></span>';
+    card.querySelector(".device-slot-title").textContent = title;
+    card.querySelector(".device-slot-sub").textContent = sub;
+    card.onclick = onClick;
+    return card;
+  }
+
+  function renderDeviceSlots(active, limit) {
+    const box = els.devicesSlots;
+    box.innerHTML = "";
+    const goConnect = () => switchPage("connect-device", els.connectDeviceTitle);
+    const goBuy = () => switchPage("connect-device", els.devicesBuyTitle);
+
+    if (limit > 0 && active >= limit) {
+      box.appendChild(
+        slotCard("Докупить устройство", "Все " + limit + " " + deviceWord(limit) + " заняты", goBuy)
+      );
+      return;
+    }
+    const free = limit > 0 ? Math.min(limit - active, MAX_SLOT_CARDS) : 1;
+    for (let i = 0; i < free; i++) {
+      box.appendChild(slotCard("Добавить устройство", "VPN ещё на одном устройстве", goConnect));
+    }
   }
 
   async function refreshDevicesPage() {

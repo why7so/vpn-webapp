@@ -134,7 +134,7 @@
           </button>
         </div>
 
-        <div class="section-title">Докупить устройства</div>
+        <div class="section-title" id="devices-buy-title">Докупить устройства</div>
         <div class="card">
           <div class="device-selector">
             <div class="device-selector-label">
@@ -239,6 +239,11 @@
             <span class="dev-summary-count" id="devices-count">—</span>
             <span class="dev-summary-limit" id="devices-limit">—</span>
           </div>
+          <!-- Единственный способ переименовать или убрать устройство —
+               меню по долгому нажатию, и снаружи оно никак не видно. -->
+          <div class="email-hint">
+            Зажмите устройство в списке, чтобы переименовать или убрать его.
+          </div>
           <!-- Единственный настоящий отзыв доступа: меняется ключ, а с ним и
                ссылка-подписка, поэтому старые конфиги перестают приниматься
                нодой независимо от желания клиента. Предупреждение говорит
@@ -250,6 +255,9 @@
         </div>
 
         <div id="devices-list"></div>
+        <!-- Свободные места — пунктирными карточками под списком: видно и
+             сколько ещё можно подключить, и куда для этого идти. -->
+        <div id="devices-slots"></div>
 
         <div class="card hidden" id="devices-empty">
           <div class="email-hint">
