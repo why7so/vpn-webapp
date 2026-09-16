@@ -722,13 +722,19 @@ body {
   -webkit-user-select: none;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.2s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.device-card:active,
-.promo-card:not(.is-confirming):active,
-.node-card:active {
-  transform: scale(0.985);
+/* Удержание: карточка медленно уходит вглубь всё время, пока палец на
+   ней, — по этому движению видно, что нажатие «копится» и вот-вот
+   сработает. Длительность равна LONG_PRESS_MS в app.js: к моменту
+   срабатывания карточка как раз доходит до конца. Отпустил раньше —
+   класс снимается, и она быстро возвращается. */
+.device-card.is-pressing,
+.promo-card.is-pressing,
+.node-card.is-pressing {
+  transform: scale(0.955);
+  transition: transform 0.45s cubic-bezier(0.25, 0.6, 0.35, 1);
 }
 
 /* Свободное место под устройство: та же форма, что у карточки
@@ -1505,9 +1511,11 @@ body.scroll-locked {
   animation: ctx-ghost-in 0.26s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
+/* Копия подхватывает карточку в том масштабе, до которого та ушла за
+   время удержания, и всплывает обратно — движение непрерывное. */
 @keyframes ctx-ghost-in {
   from {
-    transform: scale(0.985);
+    transform: scale(0.955);
     box-shadow: none;
   }
 }
@@ -1892,14 +1900,25 @@ body.scroll-locked {
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
 }
 
+/* Первые мгновения переноса: из сжатого удержанием состояния карточка
+   плавно приподнимается над списком и обретает тень, а не прыгает. Дальше
+   класс снимается, и она идёт за пальцем без задержки. */
+.node-card.is-dragging.is-lifting {
+  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease;
+}
+
 .node-card.is-dragging.is-dropping,
 .node-card.is-shifting {
-  transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+  transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .node-card.is-dragging.is-lifting,
   .node-card.is-dragging.is-dropping,
-  .node-card.is-shifting {
+  .node-card.is-shifting,
+  .device-card.is-pressing,
+  .promo-card.is-pressing,
+  .node-card.is-pressing {
     transition: none;
   }
 }

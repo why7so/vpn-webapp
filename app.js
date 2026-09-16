@@ -1615,6 +1615,7 @@
     const top0 = rect.top + rect.height / 2 - h0 / 2;
     const ghost = anchor.cloneNode(true);
     ghost.removeAttribute("id");
+    ghost.classList.remove("is-pressing");
     ghost.classList.add("ctx-ghost");
     ghost.style.left = left0 + "px";
     ghost.style.top = top0 + "px";
@@ -1694,7 +1695,9 @@
     let target = i;
     let raf = 0;
 
-    card.classList.add("is-dragging");
+    card.classList.add("is-dragging", "is-lifting");
+    // Подъём — с анимацией, дальше — мгновенно за пальцем.
+    setTimeout(() => card.classList.remove("is-lifting"), 240);
     items.forEach((el) => {
       if (el !== card) el.classList.add("is-shifting");
     });
@@ -1764,7 +1767,7 @@
           el.style.transform = "";
           el.classList.remove("is-shifting");
         });
-        card.classList.remove("is-dragging", "is-dropping");
+        card.classList.remove("is-dragging", "is-dropping", "is-lifting");
         if (target !== i) {
           if (target > i) list.insertBefore(card, items[target].nextSibling);
           else list.insertBefore(card, items[target]);
@@ -1803,9 +1806,13 @@
     let fired = false;
     let dragging = false;
 
+    // is-pressing — карточка медленно уходит вглубь, пока палец на ней
+    // (см. style.css); снимается при любом исходе: отмена, срабатывание,
+    // перенос.
     const cancel = () => {
       if (timer) clearTimeout(timer);
       timer = null;
+      card.classList.remove("is-pressing");
     };
     const release = () => {
       cancel();
@@ -1819,9 +1826,14 @@
       startX = e.clientX;
       startY = e.clientY;
       cancel();
+      card.classList.add("is-pressing");
       timer = setTimeout(() => {
         timer = null;
         fired = true;
+        // Класс снимаем ДО onPress: меню клонирует карточку, и копия
+        // унаследовала бы сжатие насовсем. Всплывает она из него сама
+        // (ctx-ghost-in), а оригинал под размытием возвращается в покой.
+        card.classList.remove("is-pressing");
         onPress();
       }, LONG_PRESS_MS);
     });
