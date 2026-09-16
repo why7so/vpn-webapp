@@ -3115,13 +3115,10 @@
 
   els.homeDevicesBtn.onclick = () => openDevicesPage();
   els.devicesOpenBtn.onclick = () => openDevicesPage();
-  els.devicesBack.onclick = () => {
-    switchPage("connect-device");
-    // На управлении могли отключить устройство — подпись в блоке-входе
-    // должна показать новое число, а не то, с которым уходили. Через
-    // навбар это делает его обработчик, а сюда он не заходит.
-    if (cachedDevices) renderDevicesEntry(cachedDevices);
-  };
+  // На управлении могли отключить устройство — подпись в блоке-входе
+  // должна показать новое число, а не то, с которым уходили; goBack это
+  // делает. Через навбар — его обработчик.
+  els.devicesBack.onclick = goBack;
 
   els.themeSeg.onclick = (e) => {
     const btn = e.target.closest(".seg-btn");
@@ -3181,7 +3178,33 @@
   // индикатор повисает между кнопками и активной не выглядит ни одна.
   const NAV_PARENT = { devices: "connect-device" };
 
+  // Системная кнопка «назад» в шапке Telegram — на вложенных страницах
+  // (у которых есть родитель в NAV_PARENT). Своя кнопка на странице при
+  // этом прячется: две «назад» на одном экране путают, а системная — там,
+  // где её ищут. В браузере системной нет, остаётся своя.
+  const backButton = tg && tg.BackButton;
+  let backTarget = null;
+
+  function goBack() {
+    if (!backTarget) return;
+    if (backTarget === "connect-device" && cachedDevices) renderDevicesEntry(cachedDevices);
+    switchPage(backTarget);
+  }
+
+  if (backButton) {
+    backButton.onClick(goBack);
+    els.devicesBack.classList.add("hidden");
+  }
+
+  function syncBackButton(pageId) {
+    backTarget = NAV_PARENT[pageId] || null;
+    if (!backButton) return;
+    if (backTarget) backButton.show();
+    else backButton.hide();
+  }
+
   function setActiveNav(targetId, skipAnim) {
+    syncBackButton(targetId);
     targetId = NAV_PARENT[targetId] || targetId;
     if (targetId === currentNavTarget) return;
     currentNavTarget = targetId;

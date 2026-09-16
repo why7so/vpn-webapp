@@ -219,7 +219,9 @@
       <!-- ===== Страница 5: Устройства (из раздела «Аккаунт») ===== -->
 
       <section class="page hidden" id="page-devices" data-page="devices">
-        <button class="page-back" id="devices-back">← Устройства</button>
+        <!-- Внутри Telegram кнопка «назад» — системная, в шапке
+             (tg.BackButton, см. syncBackButton); эта остаётся для браузера. -->
+        <button class="page-back" id="devices-back">← Назад</button>
         <div class="section-title">Устройства</div>
 
         <div class="card" id="devices-summary">
