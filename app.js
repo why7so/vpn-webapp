@@ -1784,6 +1784,9 @@
   els.ctxOverlay.onclick = (e) => {
     if (e.target === els.ctxOverlay) closeContextMenu();
   };
+  // Новое касание по размытию тоже не должно прокручивать страницу под
+  // меню; touch-action: none в CSS — то же самое для тех, кто его чтит.
+  els.ctxOverlay.addEventListener("touchmove", (e) => e.preventDefault(), { passive: false });
 
   // Долгое нажатие ловим сами, по указателю: iOS в WebView не шлёт
   // contextmenu, а Android шлёт — и его тоже принимаем, чтобы не ждать
@@ -1838,18 +1841,18 @@
     card.addEventListener("pointerup", release);
     card.addEventListener("pointercancel", release);
     card.addEventListener("pointerleave", cancel);
-    // После долгого нажатия палец на карточке двигает её, а не страницу.
-    // Запретить прокрутку задним числом можно только так: touch-action
-    // читается в момент касания, а тогда мы ещё не знали, что это будет.
-    if (onDrag) {
-      card.addEventListener(
-        "touchmove",
-        (e) => {
-          if (fired) e.preventDefault();
-        },
-        { passive: false }
-      );
-    }
+    // После долгого нажатия палец на карточке двигает её (ноды) или
+    // просто держит меню — но не страницу: иначе меню висит, а список под
+    // ним уезжает. Запретить прокрутку задним числом можно только так:
+    // touch-action читается в момент касания, а тогда мы ещё не знали,
+    // чем оно станет.
+    card.addEventListener(
+      "touchmove",
+      (e) => {
+        if (fired) e.preventDefault();
+      },
+      { passive: false }
+    );
     card.addEventListener("contextmenu", (e) => {
       e.preventDefault();
       cancel();
