@@ -406,6 +406,22 @@
     <!-- Подтверждение сброса — шторкой, как переименование и удаление:
          раскрываясь внутри карточки, оно сдвигало список устройств вниз, и
          кнопки оказывались там, куда взгляд в этот момент не смотрит. -->
+    <!-- Протоколы машины: одна строка в базе на протокол, и в подписке
+         каждая — отдельный сервер. На карточке они чипами без id, а здесь
+         видно, какая строка какая и что с ней. -->
+    <div id="node-protos-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title" id="node-protos-title">Протоколы</div>
+        <div class="email-hint">
+          Каждая строка — отдельная запись в базе и отдельный сервер в подписке.
+          Управлять строкой по одной: /node_del и /node_rename в боте.
+        </div>
+        <div class="proto-list" id="node-protos-list"></div>
+        <button class="btn secondary btn-standalone" id="node-protos-close">Закрыть</button>
+      </div>
+    </div>
+
     <div id="devices-reset-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>

@@ -221,6 +221,10 @@
     renameTitle: document.getElementById("rename-title"),
     renameHint: document.getElementById("rename-hint"),
     confirmTitle: document.getElementById("confirm-title"),
+    nodeProtosModal: document.getElementById("node-protos-modal"),
+    nodeProtosTitle: document.getElementById("node-protos-title"),
+    nodeProtosList: document.getElementById("node-protos-list"),
+    nodeProtosClose: document.getElementById("node-protos-close"),
     deviceRenameInput: document.getElementById("device-rename-input"),
     deviceRenameSave: document.getElementById("device-rename-save"),
     deviceRenameCancel: document.getElementById("device-rename-cancel"),
@@ -1491,6 +1495,10 @@
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
     'stroke-linecap="round" stroke-linejoin="round">' +
     '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg>';
+  // Три строки — список; для «Протоколы» у ноды.
+  const ICON_LIST =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h10"/></svg>';
   // Кнопка питания — «убрать из подписки» / «вернуть».
   const ICON_POWER =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -2238,6 +2246,40 @@
     }
   }
 
+  function openNodeProtos(n) {
+    els.nodeProtosTitle.textContent = n.name;
+    const list = els.nodeProtosList;
+    list.innerHTML = "";
+    (n.protocols || []).forEach((p) => {
+      const row = document.createElement("div");
+      row.className = "proto-row" + (p.enabled === false ? " off" : "");
+      const body = document.createElement("div");
+      body.className = "proto-row-body";
+      const name = document.createElement("div");
+      name.className = "proto-row-name";
+      name.textContent = p.protocol;
+      const id = document.createElement("div");
+      id.className = "proto-row-id";
+      id.textContent = p.id;
+      body.appendChild(name);
+      body.appendChild(id);
+      row.appendChild(body);
+      // Три состояния, как у чипов на карточке: выключена вручную —
+      // приглушённая, не красная; красный — только когда не отвечает.
+      const state = document.createElement("span");
+      state.className = "node-state" + (p.enabled === false ? " off" : p.up ? "" : " down");
+      state.textContent = p.enabled === false ? "выключена" : p.up ? "online" : "offline";
+      row.appendChild(state);
+      list.appendChild(row);
+    });
+    els.nodeProtosModal.classList.remove("hidden");
+  }
+
+  els.nodeProtosClose.onclick = () => closeSheet(els.nodeProtosModal);
+  els.nodeProtosModal.onclick = (e) => {
+    if (e.target === els.nodeProtosModal) closeSheet(els.nodeProtosModal);
+  };
+
   // Меню ноды. Выключатель на карточке был обратим и без вопросов;
   // переименование — тоже, а вот удаление стирает ключи reality из базы,
   // и вернуть ноду можно только /node_add в боте — поэтому спрашиваем.
@@ -2256,6 +2298,11 @@
             maxLength: 64,
             onSave: (name) => renameNode(n, name),
           }),
+      },
+      {
+        label: "Протоколы",
+        icon: ICON_LIST,
+        onSelect: () => openNodeProtos(n),
       },
       {
         label: n.enabled ? "Убрать из подписки" : "Вернуть в подписку",
