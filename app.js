@@ -213,7 +213,7 @@
     devicesTrack: document.getElementById("devices-track"),
     devicesList: document.getElementById("devices-list"),
     devicesSlots: document.getElementById("devices-slots"),
-    devicesBuyTitle: document.getElementById("devices-buy-title"),
+    devicesBuyModal: document.getElementById("devices-buy-modal"),
     connectDeviceTitle: document.getElementById("connect-device"),
     devicesCount: document.getElementById("devices-count"),
     devicesLimit: document.getElementById("devices-limit"),
@@ -909,6 +909,12 @@
   }
 
   function openDeviceConfirm(qty, provider, priceText) {
+    // Из шторки докупки — сначала закрыть её: две шторки друг над другом
+    // не складываются, у них один z-index.
+    if (!els.devicesBuyModal.classList.contains("hidden")) {
+      closeSheet(els.devicesBuyModal, () => openDeviceConfirm(qty, provider, priceText));
+      return;
+    }
     pendingPurchase = { type: "devices", qty: qty, provider: provider };
     els.payModalPlanLabel.textContent = "Устройства";
     els.payModalPlan.textContent = "+" + qty;
@@ -1344,6 +1350,7 @@
       if (result.status === "granted") {
         notify("success", "Устройства добавлены", "Теперь доступно: " + result.device_limit);
         await refreshDevices();
+        await refreshDevicesPage();
         return;
       }
       // status === "invoice"
@@ -1351,6 +1358,7 @@
       pollInvoice(result.invoice_id, async (r) => {
         notify("success", "Оплата подтверждена", "Устройств доступно: " + r.device_limit);
         await refreshDevices();
+        await refreshDevicesPage();
       });
     } catch (e) {
       showToast(e.message, true);
@@ -1987,22 +1995,17 @@
     });
   }
 
-  // Сколько мест свободно и что с этим делать. Карточка на каждое
-  // свободное место, как пустые ячейки: сразу видно, что ещё есть куда
-  // подключить. Лимит исчерпан — одна карточка, но про докупку. Без лимита
-  // (0 — безлимит) — одна карточка «добавить», плодить их бесконечно
-  // не из чего.
-  //
-  // Больше пяти пустых карточек не рисуем: при лимите в десять и одном
-  // подключённом список пустых мест вытеснял бы сами устройства.
-  const MAX_SLOT_CARDS = 5;
+  // Плюс — для «докупить».
+  const ICON_PLUS =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" ' +
+    'stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>';
 
-  function slotCard(title, sub, onClick) {
+  function slotCard(icon, title, sub, onClick) {
     const card = document.createElement("button");
     card.className = "device-slot";
     card.type = "button";
     card.innerHTML =
-      '<span class="device-slot-icon" aria-hidden="true">' + ICON_PHONE + "</span>" +
+      '<span class="device-slot-icon" aria-hidden="true">' + icon + "</span>" +
       '<span class="device-slot-body"><span class="device-slot-title"></span>' +
       '<span class="device-slot-sub"></span></span>';
     card.querySelector(".device-slot-title").textContent = title;
@@ -2011,23 +2014,41 @@
     return card;
   }
 
+  // Две плашки под списком. «Добавить» — всегда одна: это дорога на
+  // страницу подключения, а не счётчик мест; сколько свободно, написано
+  // в подписи. «Докупить» — шторка с выбором и оплатой; при безлимите
+  // (лимит 0) докупать нечего, и её нет.
   function renderDeviceSlots(active, limit) {
     const box = els.devicesSlots;
     box.innerHTML = "";
     const goConnect = () => switchPage("connect-device", els.connectDeviceTitle);
-    const goBuy = () => switchPage("connect-device", els.devicesBuyTitle);
 
-    if (limit > 0 && active >= limit) {
-      box.appendChild(
-        slotCard("Докупить устройство", "Все " + limit + " " + deviceWord(limit) + " заняты", goBuy)
-      );
-      return;
-    }
-    const free = limit > 0 ? Math.min(limit - active, MAX_SLOT_CARDS) : 1;
-    for (let i = 0; i < free; i++) {
-      box.appendChild(slotCard("Добавить устройство", "VPN ещё на одном устройстве", goConnect));
+    const free = limit > 0 ? limit - active : null;
+    const addSub =
+      free === null
+        ? "VPN ещё на одном устройстве"
+        : free > 0
+          ? "VPN ещё на одном устройстве · свободно " + free + " из " + limit
+          : "Свободных мест нет — освободите или докупите";
+    box.appendChild(slotCard(ICON_PHONE, "Добавить устройство", addSub, goConnect));
+
+    if (limit > 0) {
+      const line = document.createElement("div");
+      line.className = "device-slot-divider";
+      box.appendChild(line);
+      const price = cachedDevices && cachedDevices.price_rub ? Math.round(cachedDevices.price_rub) + " ₽ за место" : "Ещё места для VPN";
+      box.appendChild(slotCard(ICON_PLUS, "Докупить устройство", price, openDevicesBuySheet));
     }
   }
+
+  function openDevicesBuySheet() {
+    if (cachedDevices) renderDeviceButtons(cachedDevices);
+    els.devicesBuyModal.classList.remove("hidden");
+  }
+
+  els.devicesBuyModal.onclick = (e) => {
+    if (e.target === els.devicesBuyModal) closeSheet(els.devicesBuyModal);
+  };
 
   async function refreshDevicesPage() {
     const data = await api("/api/devices");

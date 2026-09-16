@@ -764,6 +764,13 @@ body {
   border-color: var(--accent);
 }
 
+/* Линия между «добавить» (бесплатно) и «докупить» (за деньги). */
+.device-slot-divider {
+  height: 1px;
+  background: var(--surface-3);
+  margin: 6px 4px 16px;
+}
+
 .device-slot-icon {
   width: 46px;
   height: 46px;

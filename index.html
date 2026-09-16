@@ -133,18 +133,6 @@
             Управление устройствами
           </button>
         </div>
-
-        <div class="section-title" id="devices-buy-title">Докупить устройства</div>
-        <div class="card">
-          <div class="device-selector">
-            <div class="device-selector-label">
-              <span>Всего устройств</span>
-              <span id="devices-qty-label">без доп. устройств</span>
-            </div>
-            <div class="device-track" id="devices-track"></div>
-          </div>
-          <div class="pay-methods hidden" id="devices-pay-methods"></div>
-        </div>
       </section>
 
       <!-- ===== Страница 3: Тарифы и оплата ===== -->
@@ -255,8 +243,9 @@
         </div>
 
         <div id="devices-list"></div>
-        <!-- Свободные места — пунктирными карточками под списком: видно и
-             сколько ещё можно подключить, и куда для этого идти. -->
+        <!-- Под списком две плашки: «добавить» ведёт на подключение,
+             «докупить» открывает шторку с оплатой. Между ними линия — это
+             разные действия: одно бесплатно, другое нет. -->
         <div id="devices-slots"></div>
 
         <div class="card hidden" id="devices-empty">
@@ -415,6 +404,25 @@
         </div>
         <div class="proto-list" id="node-protos-list"></div>
         <button class="btn secondary btn-standalone" id="node-protos-close">Закрыть</button>
+      </div>
+    </div>
+
+    <!-- Докупка мест — шторкой со страницы устройств: выбор количества и
+         способ оплаты. Раньше жила на странице подключения, где до неё
+         доходили редко: место под устройства ищут там, где устройства. -->
+    <div id="devices-buy-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title">Докупить устройства</div>
+        <div class="email-hint">Выберите, сколько мест добавить, и способ оплаты.</div>
+        <div class="device-selector">
+          <div class="device-selector-label">
+            <span>Всего устройств</span>
+            <span id="devices-qty-label">без доп. устройств</span>
+          </div>
+          <div class="device-track" id="devices-track"></div>
+        </div>
+        <div class="pay-methods hidden" id="devices-pay-methods"></div>
       </div>
     </div>
 
