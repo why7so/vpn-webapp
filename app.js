@@ -1835,6 +1835,15 @@
       startY = e.clientY;
       cancel();
       card.classList.add("is-pressing");
+      // Захват указателя: дальше все pointermove/up приходят карточке,
+      // даже когда над ней уже висит меню. Касанию это и так свойственно,
+      // а мышь без захвата после открытия меню «теряется» в размытии —
+      // на ПК перенос не начинался или дёргался. Снимается сам на pointerup.
+      try {
+        card.setPointerCapture(e.pointerId);
+      } catch (err) {
+        /* синтетический указатель или старый WebView — обойдёмся */
+      }
       timer = setTimeout(() => {
         timer = null;
         fired = true;
@@ -1852,7 +1861,10 @@
         if (moved) cancel();
         return;
       }
-      if (fired && onDrag && !dragging && moved) {
+      // buttons & 1 — кнопка (или палец) всё ещё прижаты. Меню могло
+      // открыться правым кликом: тогда мышь просто ходит над ним, и это
+      // не перенос.
+      if (fired && onDrag && !dragging && moved && e.buttons & 1) {
         dragging = true;
         closeContextMenu(null, true);
         onDrag(e);
@@ -1860,6 +1872,8 @@
     });
     card.addEventListener("pointerup", release);
     card.addEventListener("pointercancel", release);
+    // pointerleave с захватом не приходит, пока кнопка нажата, — так и
+    // надо: мышь, чуть выехавшая за край карточки, не отменяет удержание.
     card.addEventListener("pointerleave", cancel);
     // После долгого нажатия палец на карточке двигает её (ноды) или
     // просто держит меню — но не страницу: иначе меню висит, а список под
