@@ -717,7 +717,8 @@ body {
    подтверждение удаления промокода не сжимаем: там жмут кнопки внутри. */
 .device-card,
 .promo-card,
-.node-card {
+.node-card,
+.proto-row {
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   user-select: none;
@@ -732,7 +733,8 @@ body {
    класс снимается, и она быстро возвращается. */
 .device-card.is-pressing,
 .promo-card.is-pressing,
-.node-card.is-pressing {
+.node-card.is-pressing,
+.proto-row.is-pressing {
   transform: scale(0.955);
   transition: transform 0.45s cubic-bezier(0.25, 0.6, 0.35, 1);
 }
@@ -1918,7 +1920,8 @@ body.scroll-locked {
   .node-card.is-shifting,
   .device-card.is-pressing,
   .promo-card.is-pressing,
-  .node-card.is-pressing {
+  .node-card.is-pressing,
+  .proto-row.is-pressing {
     transition: none;
   }
 }

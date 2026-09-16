@@ -2246,7 +2246,85 @@
     }
   }
 
+  // Какая машина открыта в шторке протоколов — чтобы после действия над
+  // строкой перерисовать шторку по свежей сводке, а не по той, что была.
+  let protosMachineId = null;
+
+  // Действие над строкой: шторка протоколов закрывается, открывается
+  // шторка действия, а после него протоколы открываются снова, уже с
+  // новыми данными. Две шторки друг над другом не складываются: у них один
+  // z-index, и та, что раньше в разметке, оказалась бы снизу.
+  function withProtosClosed(open) {
+    closeSheet(els.nodeProtosModal, open);
+  }
+
+  async function afterRowAction() {
+    await refreshAdmin();
+    const n = lastAdminNodes.find((m) => m.machine_id === protosMachineId);
+    if (n) openNodeProtos(n);
+  }
+
+  async function rowRequest(path, body, toast) {
+    try {
+      await api(path, { method: "POST", body: JSON.stringify(body) });
+      showToast(toast);
+    } catch (e) {
+      showToast(e.message, true);
+    }
+    await afterRowAction();
+  }
+
+  function openRowMenu(row, p) {
+    openContextMenu(row, [
+      {
+        label: "Переименовать",
+        icon: ICON_PENCIL,
+        onSelect: () =>
+          withProtosClosed(() =>
+            openRenameSheet({
+              title: "Переименовать сервер",
+              hint: "Подпись этой строки в списке серверов у пользователей.",
+              value: p.name,
+              placeholder: p.name,
+              maxLength: 64,
+              onSave: (name) => {
+                name = name.trim();
+                if (!name || name === p.name) return afterRowAction();
+                rowRequest("/api/admin/node/rename", { node_id: p.id, name: name }, "Сервер теперь называется " + name);
+              },
+            })
+          ),
+      },
+      {
+        label: p.enabled === false ? "Вернуть в подписку" : "Убрать из подписки",
+        icon: ICON_POWER,
+        onSelect: () =>
+          rowRequest(
+            "/api/admin/node",
+            { node_id: p.id, enabled: p.enabled === false },
+            p.name + (p.enabled === false ? " вернулся в подписку" : " убран из подписки")
+          ),
+      },
+      {
+        label: "Удалить строку",
+        icon: ICON_TRASH,
+        danger: true,
+        onSelect: () =>
+          withProtosClosed(() =>
+            openConfirmSheet({
+              title: "Удалить строку",
+              text:
+                "«" + p.name + "» (" + p.protocol + ") пропадёт из базы; остальные протоколы " +
+                "машины останутся. У клиентов исчезнет при следующем обновлении подписки.",
+              onApply: () => rowRequest("/api/admin/node/delete", { node_id: p.id }, "Строка " + p.name + " удалена"),
+            })
+          ),
+      },
+    ]);
+  }
+
   function openNodeProtos(n) {
+    protosMachineId = n.machine_id;
     els.nodeProtosTitle.textContent = n.name;
     const list = els.nodeProtosList;
     list.innerHTML = "";
@@ -2257,10 +2335,10 @@
       body.className = "proto-row-body";
       const name = document.createElement("div");
       name.className = "proto-row-name";
-      name.textContent = p.protocol;
+      name.textContent = p.name || p.protocol;
       const id = document.createElement("div");
       id.className = "proto-row-id";
-      id.textContent = p.id;
+      id.textContent = p.protocol + " · " + p.id;
       body.appendChild(name);
       body.appendChild(id);
       row.appendChild(body);
@@ -2270,6 +2348,7 @@
       state.className = "node-state" + (p.enabled === false ? " off" : p.up ? "" : " down");
       state.textContent = p.enabled === false ? "выключена" : p.up ? "online" : "offline";
       row.appendChild(state);
+      attachLongPress(row, () => openRowMenu(row, p));
       list.appendChild(row);
     });
     els.nodeProtosModal.classList.remove("hidden");
@@ -2327,9 +2406,14 @@
     ]);
   }
 
+  // Последняя сводка по нодам — шторка протоколов перерисовывается по ней
+  // после действия над строкой.
+  let lastAdminNodes = [];
+
   function renderAdminNodes(nodes) {
     const box = els.adminNodes;
     box.innerHTML = "";
+    lastAdminNodes = nodes;
 
     if (!nodes.length) {
       const empty = document.createElement("div");
