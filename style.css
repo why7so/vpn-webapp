@@ -176,6 +176,24 @@ body {
      появились подписи. */
   padding: 14px 14px 108px;
   -webkit-font-smoothing: antialiased;
+  /* Как в нативном экране: текст интерфейса не выделяется. На Android
+     долгое нажатие на любую подпись поднимало маркеры выделения, на ПК
+     протяжка мышью (в том числе при переносе нод) красила полстраницы.
+     Выделение возвращено точечно тому, что копируют, — см. .selectable. */
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Что можно выделять и копировать: поля ввода и «строки для копирования». */
+input,
+textarea,
+[contenteditable],
+.selectable {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
 }
 
 .hidden {
@@ -868,6 +886,8 @@ body {
 /* ---------- subscription url ---------- */
 
 .sub-url {
+  -webkit-user-select: all;
+  user-select: all;
   word-break: break-all;
   font-size: 12px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -1238,6 +1258,8 @@ input:focus {
 /* Ссылка — отдельным полем, а не строкой в тексте: это то, что копируют
    и отправляют, и глазу надо сразу видеть, где она начинается. */
 .referral-link {
+  -webkit-user-select: all;
+  user-select: all;
   margin: 10px 0 12px;
   padding: 10px 12px;
   border-radius: 12px;
@@ -1248,8 +1270,6 @@ input:focus {
   line-height: 1.45;
   color: var(--accent);
   word-break: break-all;
-  -webkit-user-select: all;
-  user-select: all;
 }
 
 .account-row {
