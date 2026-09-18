@@ -1281,7 +1281,6 @@ input:focus {
    точка и бейдж состояния. */
 .stats-card {
   padding: 16px 18px 12px;
-  margin-bottom: 12px;
 }
 
 .stats-status {
