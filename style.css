@@ -1235,6 +1235,23 @@ input:focus {
   font-weight: 600;
 }
 
+/* Ссылка — отдельным полем, а не строкой в тексте: это то, что копируют
+   и отправляют, и глазу надо сразу видеть, где она начинается. */
+.referral-link {
+  margin: 10px 0 12px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  color: var(--accent);
+  word-break: break-all;
+  -webkit-user-select: all;
+  user-select: all;
+}
+
 .account-row {
   display: flex;
   align-items: center;
