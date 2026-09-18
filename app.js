@@ -273,9 +273,17 @@
     browserLogoutBtn: document.getElementById("browser-logout-btn"),
 
     accountId: document.getElementById("account-id"),
-    statusLine: document.getElementById("status-line"),
+    statsStatus: document.getElementById("stats-status"),
     statusTitle: document.getElementById("status-title"),
-    statusNote: document.getElementById("status-note"),
+    statusExtra: document.getElementById("status-extra"),
+    statusBadge: document.getElementById("status-badge"),
+    trafficUp: document.getElementById("traffic-up"),
+    trafficUpUnit: document.getElementById("traffic-up-unit"),
+    trafficDown: document.getElementById("traffic-down"),
+    trafficDownUnit: document.getElementById("traffic-down-unit"),
+    newsDivider: document.getElementById("news-divider"),
+    newsRow: document.getElementById("news-row"),
+    newsText: document.getElementById("news-text"),
     referralTitle: document.getElementById("referral-title"),
     referralCard: document.getElementById("referral-card"),
     referralCount: document.getElementById("referral-count"),
@@ -627,6 +635,7 @@
   let selectedDeviceQty = 0; // выбранное на оси "Докупить устройства" количество (0 = без доп. устройств)
 
   function renderProfile(profile) {
+    renderTraffic(profile.traffic);
     cachedProfile = profile;
     els.balance.textContent = Math.round(profile.balance) + " ₽";
     // Вкладка «Админ» — только тем, кто в ADMIN_IDS. Это лишь показ: доступ
@@ -685,21 +694,64 @@
     showToast("ID скопирован");
   };
 
-  // ---------- статус сервиса ----------
-  // Публичный /api/status, без авторизации. Ошибка сети — строку просто
-  // не показываем: пугать «сбоем» из-за того, что не дозвонились, нельзя.
+  // ---------- сводка: статус, ноды, новость ----------
+  // Публичный /api/status, без авторизации. Ошибка сети — строка остаётся
+  // какой была: пугать «сбоем» из-за того, что не дозвонились, нельзя.
   const STATUS_POLL_MS = 60000;
+  const STATUS_BADGE = { ok: "online", maintenance: "работы", degraded: "перебои", incident: "сбой" };
+
+  function nodesWord(n) {
+    if (n % 10 === 1 && n % 100 !== 11) return "нода";
+    if (n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14)) return "ноды";
+    return "нод";
+  }
+
+  let newsUrl = "";
 
   function renderStatus(st) {
-    if (!st || !st.code) {
-      els.statusLine.hidden = true;
-      return;
-    }
-    els.statusLine.className = "status-line " + st.code;
-    els.statusTitle.textContent = st.title || "";
-    els.statusNote.textContent = st.note || "";
-    els.statusNote.hidden = !st.note;
-    els.statusLine.hidden = false;
+    if (!st || !st.code) return;
+    els.statsStatus.className = "stats-status " + st.code;
+    els.statusTitle.textContent = st.code === "ok" ? "VPN работает" : st.title || "";
+    // После заголовка: пояснение, если есть, и число живых нод — только
+    // когда всё в порядке: во время сбоя оно спорило бы с самим статусом.
+    const extra = [];
+    if (st.note) extra.push(st.note);
+    if (st.code === "ok" && st.nodes_active > 0) extra.push(st.nodes_active + " " + nodesWord(st.nodes_active));
+    els.statusExtra.textContent = extra.length ? " · " + extra.join(" · ") : "";
+    els.statusBadge.textContent = STATUS_BADGE[st.code] || st.code;
+
+    const news = st.news && st.news.title && st.news.url ? st.news : null;
+    newsUrl = news ? news.url : "";
+    els.newsText.textContent = news ? news.title : "";
+    els.newsRow.hidden = !news;
+    els.newsDivider.hidden = !news;
+  }
+
+  // Пост канала — только через openTelegramLink: обычная ссылка из
+  // мини-приложения уходит во внешний браузер, а там t.me показывает
+  // «открыть в Telegram» вместо самого поста.
+  els.newsRow.onclick = () => {
+    if (!newsUrl) return;
+    if (tg && tg.openTelegramLink) tg.openTelegramLink(newsUrl);
+    else window.open(newsUrl, "_blank", "noopener");
+  };
+
+  // Байты → число и единица, как на счётчике: 30.8 ГБ, 640 МБ, 0 МБ.
+  function trafficParts(bytes) {
+    const gb = bytes / 1073741824;
+    if (gb >= 1) return [gb >= 100 ? Math.round(gb) : gb.toFixed(1), "ГБ"];
+    const mb = bytes / 1048576;
+    return [mb >= 10 ? Math.round(mb) : mb.toFixed(1), "МБ"];
+  }
+
+  function renderTraffic(traffic) {
+    const t = traffic || { upload: 0, download: 0 };
+    const up = trafficParts(t.upload || 0);
+    const down = trafficParts(t.download || 0);
+    els.trafficUp.textContent = up[0];
+    els.trafficUpUnit.textContent = up[1];
+    els.trafficDown.textContent = down[0];
+    els.trafficDownUnit.textContent = down[1];
   }
 
   async function refreshStatus() {

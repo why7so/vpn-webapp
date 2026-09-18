@@ -1274,21 +1274,29 @@ input:focus {
   word-break: break-all;
 }
 
-/* ---------- статус сервиса ---------- */
+/* ---------- сводка на главной ---------- */
 
-/* Одна строка. «Всё работает» — без плашки, только точка и тихий текст:
-   ей не нужно внимания. Остальные состояния — полоска в цвет: янтарная,
-   когда это плановое или частичное, красная — когда сломано. Точка в
-   этих состояниях мягко пульсирует: живое «мы в курсе». */
-.status-line {
+/* Три яруса: статус (тихо), трафик (крупно — единственное, что тут
+   акцентно), новость (тихо, за линией). Один цвет-акцент на карточку:
+   точка и бейдж состояния. */
+.stats-card {
+  padding: 16px 18px 12px;
+  margin-bottom: 12px;
+}
+
+.stats-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.stats-status-info {
   display: flex;
   align-items: center;
   gap: 8px;
-  min-height: 20px;
-  padding: 2px 4px;
-  margin: -4px 0 10px;
-  font-size: 13px;
-  color: var(--text-dim);
+  min-width: 0;
 }
 
 .status-dot {
@@ -1299,40 +1307,51 @@ input:focus {
   flex-shrink: 0;
 }
 
-.status-title {
-  font-weight: 600;
-}
-
-.status-note {
+.stats-status-text {
+  font-size: 13px;
   color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.status-note::before {
-  content: "· ";
-}
-
-.status-line:not(.ok) {
-  padding: 10px 14px;
-  border-radius: 14px;
+.stats-status-text b {
   color: var(--text);
+  font-weight: 700;
 }
 
-.status-line.maintenance,
-.status-line.degraded {
-  background: var(--warn-soft);
+.status-badge {
+  flex-shrink: 0;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
-.status-line.maintenance .status-dot,
-.status-line.degraded .status-dot {
+/* Нерабочие состояния: цвет уходит в точку и бейдж, карточка не краснеет
+   целиком — трафик и новость под ней всё те же. Точка пульсирует. */
+.stats-status.maintenance .status-dot,
+.stats-status.degraded .status-dot {
   background: var(--warn);
+  color: var(--warn-soft);
 }
 
-.status-line.incident {
-  background: var(--danger-soft);
+.stats-status.maintenance .status-badge,
+.stats-status.degraded .status-badge {
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
-.status-line.incident .status-dot {
+.stats-status.incident .status-dot {
   background: var(--danger);
+  color: var(--danger-soft);
+}
+
+.stats-status.incident .status-badge {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 @keyframes status-pulse {
@@ -1347,21 +1366,109 @@ input:focus {
   }
 }
 
-.status-line:not(.ok) .status-dot {
+.stats-status:not(.ok) .status-dot {
   animation: status-pulse 2s ease-in-out infinite;
 }
 
-.status-line.maintenance .status-dot,
-.status-line.degraded .status-dot {
-  color: var(--warn-soft);
+.stats-traffic {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 32px;
+  margin-bottom: 14px;
 }
 
-.status-line.incident .status-dot {
-  color: var(--danger-soft);
+.traffic-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.traffic-icon {
+  font-size: 18px;
+  color: var(--text-dim);
+  position: relative;
+  top: 1px;
+}
+
+.traffic-value {
+  font-size: 34px;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.traffic-unit {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.stats-divider {
+  height: 1px;
+  background: var(--line);
+  margin: 0 -4px 6px;
+}
+
+.news-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: calc(100% + 12px);
+  margin: 0 -6px;
+  padding: 6px;
+  border: none;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text-dim);
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition: background-color 0.15s ease;
+}
+
+.news-row:active {
+  background: var(--surface-2);
+}
+
+/* Атрибут hidden слабее собственного display у этих двух — без явного
+   правила строка новости и линия над ней не прятались бы никогда. */
+.news-row[hidden],
+.stats-divider[hidden] {
+  display: none;
+}
+
+.news-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.news-icon svg {
+  width: 15px;
+  height: 15px;
+}
+
+.news-text {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.news-arrow {
+  flex-shrink: 0;
+  font-size: 18px;
+  line-height: 1;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .status-line:not(.ok) .status-dot {
+  .stats-status:not(.ok) .status-dot {
     animation: none;
   }
 }

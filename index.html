@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=63" />
+  <link rel="stylesheet" href="style.css?v=64" />
 </head>
 <body>
   <div id="app">
@@ -40,13 +40,39 @@
 
       <!-- ===== Страница 1: Главная ===== -->
       <section class="page" id="page-top" data-page="top">
-        <!-- Статус сервиса, одной строкой. Когда всё хорошо — тихая
-             подпись с точкой, чтобы не спорить с балансом и подпиской;
-             когда нет — подкрашенная полоска. Ставится вручную, /status. -->
-        <div class="status-line ok" id="status-line" hidden>
-          <span class="status-dot" aria-hidden="true"></span>
-          <span class="status-title" id="status-title">Всё работает</span>
-          <span class="status-note" id="status-note"></span>
+        <!-- Сводка: статус сервиса (ставится вручную, /status) и число
+             живых нод; трафик за период — крупно, это главная цифра
+             карточки; под линией — последняя новость канала, по тапу
+             открывается пост (через openTelegramLink, иначе ушло бы в
+             браузер). -->
+        <div class="card stats-card" id="stats-card">
+          <div class="stats-status ok" id="stats-status">
+            <div class="stats-status-info">
+              <span class="status-dot" aria-hidden="true"></span>
+              <span class="stats-status-text"><b id="status-title">VPN работает</b><span id="status-extra"></span></span>
+            </div>
+            <span class="status-badge" id="status-badge">online</span>
+          </div>
+          <div class="stats-traffic">
+            <div class="traffic-item">
+              <span class="traffic-icon" aria-hidden="true">↑</span>
+              <span class="traffic-value" id="traffic-up">—</span>
+              <span class="traffic-unit" id="traffic-up-unit"></span>
+            </div>
+            <div class="traffic-item">
+              <span class="traffic-icon" aria-hidden="true">↓</span>
+              <span class="traffic-value" id="traffic-down">—</span>
+              <span class="traffic-unit" id="traffic-down-unit"></span>
+            </div>
+          </div>
+          <div class="stats-divider" id="news-divider" hidden></div>
+          <button class="news-row" id="news-row" type="button" hidden>
+            <span class="news-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>
+            </span>
+            <span class="news-text" id="news-text"></span>
+            <span class="news-arrow" aria-hidden="true">›</span>
+          </button>
         </div>
         <div class="hero-grid">
           <div class="hero-side">
@@ -608,6 +634,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=63"></script>
+  <script src="app.js?v=64"></script>
 </body>
 </html>
