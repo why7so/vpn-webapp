@@ -273,6 +273,14 @@
     browserLogoutBtn: document.getElementById("browser-logout-btn"),
 
     accountTgId: document.getElementById("account-tg-id"),
+    referralTitle: document.getElementById("referral-title"),
+    referralCard: document.getElementById("referral-card"),
+    referralCount: document.getElementById("referral-count"),
+    referralCountLabel: document.getElementById("referral-count-label"),
+    referralBonus: document.getElementById("referral-bonus"),
+    referralLink: document.getElementById("referral-link"),
+    referralCopy: document.getElementById("referral-copy"),
+    referralShare: document.getElementById("referral-share"),
     accountUsername: document.getElementById("account-username"),
     tgLinkTitle: document.getElementById("tg-link-title"),
     tgLinkCard: document.getElementById("tg-link-card"),
@@ -664,7 +672,55 @@
     els.accountUsername.textContent = profile.username ? "@" + profile.username : "—";
     renderEmailSection(profile.email || null, profile.telegram_linked !== false);
     renderTelegramLink(profile);
+    renderReferral(profile.referral);
   }
+
+  // ---------- рефералы ----------
+  // «1 человек приглашён», «2 человека приглашено», «5 человек приглашено».
+  function invitedLabel(n) {
+    if (n === 0) return "приглашено";
+    const one = n % 10 === 1 && n % 100 !== 11;
+    const few = n % 10 >= 2 && n % 10 <= 4 && !(n % 100 >= 12 && n % 100 <= 14);
+    return (few ? "человека" : "человек") + (one ? " приглашён" : " приглашено");
+  }
+
+  let referralLinkValue = "";
+
+  function renderReferral(ref) {
+    const show = !!(ref && ref.link);
+    els.referralTitle.classList.toggle("hidden", !show);
+    els.referralCard.classList.toggle("hidden", !show);
+    if (!show) return;
+    referralLinkValue = ref.link;
+    const n = ref.invited || 0;
+    els.referralCount.textContent = String(n);
+    els.referralCountLabel.textContent = invitedLabel(n);
+    els.referralBonus.textContent =
+      "+" + Math.round(ref.bonus_rub) + " ₽ вам · +" + Math.round(ref.invitee_bonus_rub) + " ₽ другу";
+    els.referralLink.textContent = ref.link;
+  }
+
+  els.referralCopy.onclick = () => {
+    if (!referralLinkValue) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(referralLinkValue);
+    notify("success", "Ссылка скопирована", "Отправьте её другу — бонус придёт обоим");
+  };
+
+  els.referralShare.onclick = () => {
+    if (!referralLinkValue) return;
+    const text = "Попробуй " + (cachedProfile && cachedProfile.vpn_name ? cachedProfile.vpn_name : "VPN") +
+      " — по моей ссылке тебе бонус на баланс";
+    const shareUrl =
+      "https://t.me/share/url?url=" + encodeURIComponent(referralLinkValue) + "&text=" + encodeURIComponent(text);
+    if (tg) {
+      tg.openTelegramLink(shareUrl);
+    } else if (navigator.share) {
+      navigator.share({ title: text, url: referralLinkValue }).catch(() => {});
+    } else {
+      if (navigator.clipboard) navigator.clipboard.writeText(referralLinkValue);
+      showToast("Скопировано — отправьте ссылку вручную");
+    }
+  };
 
   // ---------- привязка Telegram к почтовому аккаунту ----------
   // Блок виден только у аккаунтов без Telegram (регистрация по почте) и только

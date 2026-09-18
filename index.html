@@ -176,6 +176,28 @@
           </div>
         </div>
 
+        <!-- Реферальная программа — та же, что в боте по кнопке «Рефералы»:
+             ссылка, счётчик, суммы бонусов из настроек. Скрыта у аккаунтов
+             без Telegram: ссылка ведёт в бота и без tg_id её не собрать. -->
+        <div class="section-title hidden" id="referral-title">Приглашайте друзей</div>
+        <div class="card hidden" id="referral-card">
+          <div class="referral-head">
+            <div class="referral-count">
+              <span id="referral-count">0</span>
+              <span class="referral-count-label" id="referral-count-label">приглашено</span>
+            </div>
+            <div class="referral-bonus" id="referral-bonus">—</div>
+          </div>
+          <div class="email-hint">
+            За каждого, кто впервые запустит бота по вашей ссылке, — бонус на баланс вам и другу.
+          </div>
+          <div class="sub-url" id="referral-link">—</div>
+          <div class="row">
+            <button class="btn secondary" id="referral-copy">Скопировать</button>
+            <button class="btn" id="referral-share">Поделиться</button>
+          </div>
+        </div>
+
         <!-- Выбор темы жил кнопкой в шапке; шапки больше нет, а выбор
              остался. По умолчанию — «как в Telegram»: внутри мини-приложения
              это тема самого Telegram, а не системы, и это разные вещи. -->

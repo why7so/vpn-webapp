@@ -1201,6 +1201,40 @@ input:focus {
 
 /* ---------- account page ---------- */
 
+/* Рефералы: число приглашённых крупно, бонусы рядом — как счётчик
+   устройств на своей странице. */
+.referral-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.referral-count {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.referral-count > span:first-child {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.referral-count-label,
+.referral-bonus {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.referral-bonus {
+  text-align: right;
+  font-weight: 600;
+}
+
 .account-row {
   display: flex;
   align-items: center;
