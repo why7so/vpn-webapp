@@ -16,6 +16,7 @@
   --accent-ink: #0b0c0b;
   --danger: #ff6b6b;
   --warn: #d6a33a;
+  --warn-soft: rgba(214, 163, 58, 0.14);
   --track: rgba(255, 255, 255, 0.1);
 
   /* Тонкие линии и подсветки. Отдельно от --surface-*: это не заливка, а
@@ -75,6 +76,7 @@
   --accent-ink: #ffffff;
   --danger: #c7433f;
   --warn: #b8842e;
+  --warn-soft: rgba(184, 132, 46, 0.12);
   --track: rgba(0, 0, 0, 0.09);
 
   --line: rgba(0, 0, 0, 0.08);
@@ -1270,6 +1272,98 @@ input:focus {
   line-height: 1.45;
   color: var(--accent);
   word-break: break-all;
+}
+
+/* ---------- статус сервиса ---------- */
+
+/* Одна строка. «Всё работает» — без плашки, только точка и тихий текст:
+   ей не нужно внимания. Остальные состояния — полоска в цвет: янтарная,
+   когда это плановое или частичное, красная — когда сломано. Точка в
+   этих состояниях мягко пульсирует: живое «мы в курсе». */
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 20px;
+  padding: 2px 4px;
+  margin: -4px 0 10px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+
+.status-title {
+  font-weight: 600;
+}
+
+.status-note {
+  color: var(--text-dim);
+}
+
+.status-note::before {
+  content: "· ";
+}
+
+.status-line:not(.ok) {
+  padding: 10px 14px;
+  border-radius: 14px;
+  color: var(--text);
+}
+
+.status-line.maintenance,
+.status-line.degraded {
+  background: var(--warn-soft);
+}
+
+.status-line.maintenance .status-dot,
+.status-line.degraded .status-dot {
+  background: var(--warn);
+}
+
+.status-line.incident {
+  background: var(--danger-soft);
+}
+
+.status-line.incident .status-dot {
+  background: var(--danger);
+}
+
+@keyframes status-pulse {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 0 5px transparent;
+    opacity: 0.75;
+  }
+}
+
+.status-line:not(.ok) .status-dot {
+  animation: status-pulse 2s ease-in-out infinite;
+}
+
+.status-line.maintenance .status-dot,
+.status-line.degraded .status-dot {
+  color: var(--warn-soft);
+}
+
+.status-line.incident .status-dot {
+  color: var(--danger-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-line:not(.ok) .status-dot {
+    animation: none;
+  }
 }
 
 .account-row {

@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=62" />
+  <link rel="stylesheet" href="style.css?v=63" />
 </head>
 <body>
   <div id="app">
@@ -40,6 +40,14 @@
 
       <!-- ===== Страница 1: Главная ===== -->
       <section class="page" id="page-top" data-page="top">
+        <!-- Статус сервиса, одной строкой. Когда всё хорошо — тихая
+             подпись с точкой, чтобы не спорить с балансом и подпиской;
+             когда нет — подкрашенная полоска. Ставится вручную, /status. -->
+        <div class="status-line ok" id="status-line" hidden>
+          <span class="status-dot" aria-hidden="true"></span>
+          <span class="status-title" id="status-title">Всё работает</span>
+          <span class="status-note" id="status-note"></span>
+        </div>
         <div class="hero-grid">
           <div class="hero-side">
             <div class="card mini-card">
@@ -600,6 +608,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=62"></script>
+  <script src="app.js?v=63"></script>
 </body>
 </html>

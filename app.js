@@ -273,6 +273,9 @@
     browserLogoutBtn: document.getElementById("browser-logout-btn"),
 
     accountId: document.getElementById("account-id"),
+    statusLine: document.getElementById("status-line"),
+    statusTitle: document.getElementById("status-title"),
+    statusNote: document.getElementById("status-note"),
     referralTitle: document.getElementById("referral-title"),
     referralCard: document.getElementById("referral-card"),
     referralCount: document.getElementById("referral-count"),
@@ -681,6 +684,35 @@
     if (navigator.clipboard) navigator.clipboard.writeText(id);
     showToast("ID скопирован");
   };
+
+  // ---------- статус сервиса ----------
+  // Публичный /api/status, без авторизации. Ошибка сети — строку просто
+  // не показываем: пугать «сбоем» из-за того, что не дозвонились, нельзя.
+  const STATUS_POLL_MS = 60000;
+
+  function renderStatus(st) {
+    if (!st || !st.code) {
+      els.statusLine.hidden = true;
+      return;
+    }
+    els.statusLine.className = "status-line " + st.code;
+    els.statusTitle.textContent = st.title || "";
+    els.statusNote.textContent = st.note || "";
+    els.statusNote.hidden = !st.note;
+    els.statusLine.hidden = false;
+  }
+
+  async function refreshStatus() {
+    try {
+      renderStatus(await api("/api/status"));
+    } catch (e) {
+      /* строка остаётся какой была */
+    }
+  }
+
+  setInterval(() => {
+    if (document.visibilityState === "visible") refreshStatus();
+  }, STATUS_POLL_MS);
 
   // ---------- рефералы ----------
   // «1 человек приглашён», «2 человека приглашено», «5 человек приглашено».
@@ -3473,6 +3505,7 @@
         api("/api/plans"),
         api("/api/devices"),
       ]);
+      refreshStatus();
       // Порядок важен: подпись «только «12 месяцев»» под скидкой берёт
       // название тарифа из cachedPlans, поэтому планы кладём в кэш до
       // отрисовки профиля — иначе в подписи окажется код вместо названия.
