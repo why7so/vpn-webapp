@@ -272,7 +272,7 @@
     aboutSupport: document.getElementById("about-support"),
     browserLogoutBtn: document.getElementById("browser-logout-btn"),
 
-    accountTgId: document.getElementById("account-tg-id"),
+    accountId: document.getElementById("account-id"),
     referralTitle: document.getElementById("referral-title"),
     referralCard: document.getElementById("referral-card"),
     referralCount: document.getElementById("referral-count"),
@@ -668,12 +668,19 @@
   }
 
   function renderAccount(profile) {
-    els.accountTgId.textContent = profile.tg_id != null ? String(profile.tg_id) : "—";
+    els.accountId.textContent = profile.id || "—";
     els.accountUsername.textContent = profile.username ? "@" + profile.username : "—";
     renderEmailSection(profile.email || null, profile.telegram_linked !== false);
     renderTelegramLink(profile);
     renderReferral(profile.referral);
   }
+
+  els.accountId.onclick = () => {
+    const id = els.accountId.textContent;
+    if (!id || id === "—") return;
+    if (navigator.clipboard) navigator.clipboard.writeText(id);
+    showToast("ID скопирован");
+  };
 
   // ---------- рефералы ----------
   // «1 человек приглашён», «2 человека приглашено», «5 человек приглашено».

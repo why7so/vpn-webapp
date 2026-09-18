@@ -1275,6 +1275,18 @@ input:focus {
   text-align: right;
 }
 
+/* UUID: 36 знаков, жирным и в 14px он занимал бы две строки и давил на
+   подпись. Моноширинный помельче — влезает в одну на любом телефоне. */
+.account-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  -webkit-user-select: all;
+  user-select: all;
+}
+
 /* Плашка живёт в функциональном слое — поверх содержимого, вместе с
    нижней навигацией и шторками, — и материал у неё тот же, что у них:
    --glass-sheet + размытие. Отдельного «своего» фона у неё нет намеренно,

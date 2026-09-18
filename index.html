@@ -158,9 +158,12 @@
       <section class="page hidden" id="page-about-card" data-page="about-card">
         <div class="section-title">Аккаунт</div>
         <div class="card" id="account-card">
+          <!-- Внутренний id, а не Telegram: он не меняется при смене
+               аккаунта Telegram, и именно его просит поддержка. По тапу
+               копируется — 36 символов руками не перепечатывают. -->
           <div class="account-row">
             <span class="account-row-label">ID</span>
-            <span class="account-row-value" id="account-tg-id">—</span>
+            <span class="account-row-value account-id" id="account-id" title="Нажмите, чтобы скопировать">—</span>
           </div>
           <div class="account-row">
             <span class="account-row-label">Username</span>
