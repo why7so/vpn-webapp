@@ -443,17 +443,22 @@
     svg.innerHTML = "";
     const filledDots = Math.max(0, Math.min(RING_DOTS, Math.round((daysLeft / RING_CYCLE_DAYS) * RING_DOTS)));
 
+    // Штрихи по радиусу, как деления на циферблате: круглые точки при
+    // тридцати штуках читались как бусы. Каждый — скруглённый прямоугольник,
+    // повёрнутый к центру.
+    const tickW = 3.4;
+    const tickL = 9;
     for (let i = 0; i < RING_DOTS; i++) {
-      const angle = (Math.PI * 2 * i) / RING_DOTS - Math.PI / 2;
-      const x = RING_CENTER + RING_RADIUS * Math.cos(angle);
-      const y = RING_CENTER + RING_RADIUS * Math.sin(angle);
-      const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-      dot.setAttribute("cx", x.toFixed(2));
-      dot.setAttribute("cy", y.toFixed(2));
-      // Точек стало меньше — они крупнее, чтобы кольцо не выглядело редким.
-      dot.setAttribute("r", "3.1");
-      dot.setAttribute("fill", i < filledDots ? "var(--accent-ink)" : "rgba(14,18,6,0.22)");
-      svg.appendChild(dot);
+      const deg = (360 * i) / RING_DOTS;
+      const tick = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      tick.setAttribute("x", (RING_CENTER - tickW / 2).toFixed(2));
+      tick.setAttribute("y", (RING_CENTER - RING_RADIUS - tickL / 2).toFixed(2));
+      tick.setAttribute("width", tickW);
+      tick.setAttribute("height", tickL);
+      tick.setAttribute("rx", (tickW / 2).toFixed(2));
+      tick.setAttribute("transform", "rotate(" + deg.toFixed(1) + " " + RING_CENTER + " " + RING_CENTER + ")");
+      tick.setAttribute("fill", i < filledDots ? "var(--accent-ink)" : "rgba(14,18,6,0.22)");
+      svg.appendChild(tick);
     }
   }
 
