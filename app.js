@@ -3253,7 +3253,14 @@
   // значением по умолчанию для тех, кто тему не трогал.
   // С главной — сразу на управление устройствами: карточка показывает
   // число, кнопка ведёт туда, где с ним что-то можно сделать.
+  // Откуда пришли на устройства — туда и «назад». Родитель по навбару
+  // (connect-device) — только запасной вариант: с главной «Управлять»
+  // ведёт сюда напрямую, и возврат на чужую вкладку сбивал с толку.
+  let devicesReturnTo = null;
+
   function openDevicesPage(skipAnim) {
+    const from = PAGE_IDS.find((id) => pageEls[id] && !pageEls[id].classList.contains("hidden"));
+    devicesReturnTo = from && from !== "devices" ? from : null;
     switchPage("devices", null, skipAnim);
     // Шторка подтверждения могла остаться открытой с прошлого захода.
     showResetConfirm(false);
@@ -3334,8 +3341,10 @@
 
   function goBack() {
     if (!backTarget) return;
-    if (backTarget === "connect-device" && cachedDevices) renderDevicesEntry(cachedDevices);
-    switchPage(backTarget);
+    const target = devicesReturnTo || backTarget;
+    devicesReturnTo = null;
+    if (cachedDevices) renderDevicesEntry(cachedDevices);
+    switchPage(target);
   }
 
   if (backButton) {
