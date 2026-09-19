@@ -430,19 +430,18 @@
   }
 
   // ---------- dotted progress ring ----------
-  // Плановая длительность подписки бэкенду неизвестна фронтенду напрямую,
-  // поэтому прогресс считается относительно скользящего 30-дневного цикла
-  // (типичная длительность тарифа). Если дней остаётся больше — кольцо просто полное.
+  // Точка — день: 30 точек на 30-дневный цикл (типичная длительность
+  // тарифа), закрашено ровно столько, сколько дней осталось. Больше 30 —
+  // кольцо просто полное.
   const RING_CYCLE_DAYS = 30;
-  const RING_DOTS = 48;
+  const RING_DOTS = 30;
   const RING_RADIUS = 52;
   const RING_CENTER = 60;
 
   function renderRing(daysLeft) {
     const svg = els.ringSvg;
     svg.innerHTML = "";
-    const progress = Math.max(0, Math.min(1, daysLeft / RING_CYCLE_DAYS));
-    const filledDots = Math.round(progress * RING_DOTS);
+    const filledDots = Math.max(0, Math.min(RING_DOTS, Math.round((daysLeft / RING_CYCLE_DAYS) * RING_DOTS)));
 
     for (let i = 0; i < RING_DOTS; i++) {
       const angle = (Math.PI * 2 * i) / RING_DOTS - Math.PI / 2;
@@ -451,7 +450,8 @@
       const dot = document.createElementNS("http://www.w3.org/2000/svg", "circle");
       dot.setAttribute("cx", x.toFixed(2));
       dot.setAttribute("cy", y.toFixed(2));
-      dot.setAttribute("r", "2.6");
+      // Точек стало меньше — они крупнее, чтобы кольцо не выглядело редким.
+      dot.setAttribute("r", "3.1");
       dot.setAttribute("fill", i < filledDots ? "var(--accent-ink)" : "rgba(14,18,6,0.22)");
       svg.appendChild(dot);
     }
