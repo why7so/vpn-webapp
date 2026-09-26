@@ -2185,7 +2185,8 @@ body.scroll-locked {
 /* Перенос: едущая карточка над остальными, с тенью и без своей
    анимации — за пальцем надо успевать, а не догонять. Соседи, наоборот,
    раздвигаются плавно; и сама она в конце плавно доезжает до просвета. */
-.node-card.is-dragging {
+.node-card.is-dragging,
+.proto-row.is-dragging {
   position: relative;
   z-index: 5;
   transition: none;
@@ -2195,12 +2196,15 @@ body.scroll-locked {
 /* Первые мгновения переноса: из сжатого удержанием состояния карточка
    плавно приподнимается над списком и обретает тень, а не прыгает. Дальше
    класс снимается, и она идёт за пальцем без задержки. */
-.node-card.is-dragging.is-lifting {
+.node-card.is-dragging.is-lifting,
+.proto-row.is-dragging.is-lifting {
   transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.22s ease;
 }
 
 .node-card.is-dragging.is-dropping,
-.node-card.is-shifting {
+.node-card.is-shifting,
+.proto-row.is-dragging.is-dropping,
+.proto-row.is-shifting {
   transition: transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -2208,6 +2212,9 @@ body.scroll-locked {
   .node-card.is-dragging.is-lifting,
   .node-card.is-dragging.is-dropping,
   .node-card.is-shifting,
+  .proto-row.is-dragging.is-lifting,
+  .proto-row.is-dragging.is-dropping,
+  .proto-row.is-shifting,
   .device-card.is-pressing,
   .promo-card.is-pressing,
   .node-card.is-pressing,
@@ -2258,6 +2265,26 @@ body.scroll-locked {
 }
 
 /* Строки машины в шторке «Протоколы». */
+/* Конфигурация целиком: длинная, поэтому со своей прокруткой в обе
+   стороны — переносить JSON по словам нельзя, читать станет нечем. */
+.config-pre {
+  margin: 10px 0 4px;
+  padding: 12px;
+  max-height: 46vh;
+  overflow: auto;
+  border-radius: 12px;
+  background: var(--surface-2);
+  border: 1px solid var(--line);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text);
+  white-space: pre;
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-overflow-scrolling: touch;
+}
+
 .proto-list {
   display: flex;
   flex-direction: column;

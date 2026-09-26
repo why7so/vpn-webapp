@@ -225,6 +225,13 @@
     nodeProtosTitle: document.getElementById("node-protos-title"),
     nodeProtosList: document.getElementById("node-protos-list"),
     nodeProtosClose: document.getElementById("node-protos-close"),
+    nodeConfigModal: document.getElementById("node-config-modal"),
+    nodeConfigTitle: document.getElementById("node-config-title"),
+    nodeConfigTabs: document.getElementById("node-config-tabs"),
+    nodeConfigHint: document.getElementById("node-config-hint"),
+    nodeConfigBody: document.getElementById("node-config-body"),
+    nodeConfigCopy: document.getElementById("node-config-copy"),
+    nodeConfigClose: document.getElementById("node-config-close"),
     deviceRenameInput: document.getElementById("device-rename-input"),
     deviceRenameSave: document.getElementById("device-rename-save"),
     deviceRenameCancel: document.getElementById("device-rename-cancel"),
@@ -1657,6 +1664,12 @@
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" ' +
     'stroke-linecap="round" stroke-linejoin="round">' +
     '<rect x="7" y="2.5" width="10" height="19" rx="2.5"/><path d="M11 18h2"/></svg>';
+  // Фигурные скобки — «показать конфигурацию».
+  const ICON_BRACES =
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+    'stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M8 3H7a2 2 0 0 0-2 2v4a2 2 0 0 1-2 2 2 2 0 0 1 2 2v4a2 2 0 0 0 2 2h1"/>' +
+    '<path d="M16 3h1a2 2 0 0 1 2 2v4a2 2 0 0 0 2 2 2 2 0 0 0-2 2v4a2 2 0 0 1-2 2h-1"/></svg>';
   // Три строки — список; для «Протоколы» у ноды.
   const ICON_LIST =
     '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
@@ -2463,8 +2476,81 @@
     await afterRowAction();
   }
 
+  // ---------- превью конфигурации ----------
+  // Два вида одного и того же сервера: как лежит в базе и как уедет
+  // клиенту. Держим оба под рукой — переключение вкладок не ходит на
+  // сервер повторно.
+  let configViews = { outbound: "", profile: "" };
+  let configView = "outbound";
+
+  function renderConfigView() {
+    const text = configViews[configView] || "";
+    els.nodeConfigBody.textContent = text || "—";
+    els.nodeConfigHint.textContent =
+      configView === "outbound"
+        ? "Outbound из базы, ровно как его вставляли. ${ACCESS_KEY} подставляется каждому свой."
+        : "Профиль целиком, как его получает клиент: с dns, routing и ретранслятором. Ключ показан демонстрационный.";
+    Array.prototype.forEach.call(els.nodeConfigTabs.children, (btn) => {
+      btn.classList.toggle("active", btn.dataset.configView === configView);
+    });
+  }
+
+  async function openNodeConfig(p) {
+    try {
+      const data = await api("/api/admin/node/config", {
+        method: "POST",
+        body: JSON.stringify({ node_id: p.id }),
+      });
+      configViews = { outbound: data.outbound || "", profile: data.profile || "" };
+      configView = "outbound";
+      els.nodeConfigTitle.textContent = data.name || data.id;
+      renderConfigView();
+      els.nodeConfigModal.classList.remove("hidden");
+    } catch (e) {
+      showToast(e.message, true);
+    }
+  }
+
+  Array.prototype.forEach.call(els.nodeConfigTabs.children, (btn) => {
+    btn.onclick = () => {
+      configView = btn.dataset.configView;
+      renderConfigView();
+    };
+  });
+
+  els.nodeConfigClose.onclick = () => closeSheet(els.nodeConfigModal);
+  els.nodeConfigModal.onclick = (e) => {
+    if (e.target === els.nodeConfigModal) closeSheet(els.nodeConfigModal);
+  };
+  els.nodeConfigCopy.onclick = () => {
+    const text = configViews[configView] || "";
+    if (!text) return;
+    if (navigator.clipboard) navigator.clipboard.writeText(text);
+    showToast("Конфигурация скопирована");
+  };
+
+  // Новый порядок строк внутри машины. В подписке это соседние серверы,
+  // поэтому и меняются они только между собой.
+  async function saveRowOrder(rows) {
+    const ids = rows.map((r) => r.dataset.nodeId).filter(Boolean);
+    if (ids.length < 2) return;
+    try {
+      await api("/api/admin/node/rows", { method: "POST", body: JSON.stringify({ node_ids: ids }) });
+      showToast("Порядок серверов сохранён");
+      await refreshAdmin();
+    } catch (e) {
+      showToast(e.message, true);
+      await afterRowAction();
+    }
+  }
+
   function openRowMenu(row, p) {
     openContextMenu(row, [
+      {
+        label: "Конфигурация",
+        icon: ICON_BRACES,
+        onSelect: () => withProtosClosed(() => openNodeConfig(p)),
+      },
       {
         label: "Переименовать",
         icon: ICON_PENCIL,
@@ -2537,7 +2623,12 @@
       state.className = "node-state" + (p.enabled === false ? " off" : p.up ? "" : " down");
       state.textContent = p.enabled === false ? "выключена" : p.up ? "online" : "offline";
       row.appendChild(state);
-      attachLongPress(row, () => openRowMenu(row, p));
+      row.dataset.nodeId = p.id;
+      attachLongPress(
+        row,
+        () => openRowMenu(row, p),
+        (e) => startDrag(row, e, saveRowOrder)
+      );
       list.appendChild(row);
     });
     els.nodeProtosModal.classList.remove("hidden");

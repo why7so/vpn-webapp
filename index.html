@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=69" />
+  <link rel="stylesheet" href="style.css?v=70" />
 </head>
 <body>
   <div id="app">
@@ -488,6 +488,26 @@
       </div>
     </div>
 
+    <!-- Конфигурация строки: слева то, что лежит в базе, справа — то, что
+         уезжает клиенту. Моноширинный блок со своей прокруткой: конфиг
+         длинный, а шторка не должна растягиваться на весь экран. -->
+    <div id="node-config-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title" id="node-config-title">Конфигурация</div>
+        <div class="seg" id="node-config-tabs">
+          <button type="button" class="seg-btn active" data-config-view="outbound">Как в базе</button>
+          <button type="button" class="seg-btn" data-config-view="profile">Что у клиента</button>
+        </div>
+        <div class="email-hint" id="node-config-hint"></div>
+        <pre class="config-pre" id="node-config-body">—</pre>
+        <div class="row">
+          <button class="btn secondary" id="node-config-copy">Скопировать</button>
+          <button class="btn" id="node-config-close">Закрыть</button>
+        </div>
+      </div>
+    </div>
+
     <div id="devices-reset-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>
@@ -635,6 +655,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=69"></script>
+  <script src="app.js?v=70"></script>
 </body>
 </html>
