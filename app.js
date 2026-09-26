@@ -250,6 +250,7 @@
     themeSeg: document.getElementById("theme-seg"),
     adminTiles: document.getElementById("admin-tiles"),
     adminNodes: document.getElementById("admin-nodes"),
+    adminSubscription: document.getElementById("admin-subscription"),
     adminPromos: document.getElementById("admin-promos"),
     adminPromoCode: document.getElementById("admin-promo-code"),
     adminPromoType: document.getElementById("admin-promo-type"),
@@ -2431,23 +2432,6 @@
     }
   }
 
-  // Новый порядок — на сервер целиком: он же порядок серверов в подписке.
-  // Не вышло — перечитываем сводку, чтобы панель не показывала порядок,
-  // которого нет.
-  async function saveNodeOrder(cards) {
-    const ids = cards.map((c) => c.dataset.machine).filter(Boolean);
-    try {
-      await api("/api/admin/node/order", {
-        method: "POST",
-        body: JSON.stringify({ machine_ids: ids }),
-      });
-      showToast("Порядок серверов сохранён");
-    } catch (e) {
-      showToast(e.message, true);
-      await refreshAdmin();
-    }
-  }
-
   // Какая машина открыта в шторке протоколов — чтобы после действия над
   // строкой перерисовать шторку по свежей сводке, а не по той, что была.
   let protosMachineId = null;
@@ -2686,6 +2670,72 @@
     ]);
   }
 
+  // ---------- порядок серверов в подписке ----------
+  // Плоский список: строка = сервер, каким его видит пользователь. Группа
+  // путей обхода — одна строка, «Автовыбор» — тоже строка, и его можно
+  // поставить не только первым.
+  const SUB_KIND_NOTE = { auto: "автовыбор", group: "обход", node: "" };
+
+  function renderSubscriptionOrder(items) {
+    const box = els.adminSubscription;
+    box.innerHTML = "";
+    (items || []).forEach((item) => {
+      const row = document.createElement("div");
+      row.className = "proto-row sub-row" + (item.enabled === false ? " off" : "");
+      row.dataset.itemId = item.id;
+
+      const body = document.createElement("div");
+      body.className = "proto-row-body";
+      const name = document.createElement("div");
+      name.className = "proto-row-name";
+      name.textContent = item.name || item.id;
+      const detail = document.createElement("div");
+      detail.className = "proto-row-id";
+      detail.textContent = item.detail || "";
+      body.appendChild(name);
+      body.appendChild(detail);
+      row.appendChild(body);
+
+      const note = SUB_KIND_NOTE[item.kind];
+      if (note) {
+        const badge = document.createElement("span");
+        badge.className = "node-state off";
+        badge.textContent = note;
+        row.appendChild(badge);
+      } else if (item.enabled === false) {
+        const badge = document.createElement("span");
+        badge.className = "node-state off";
+        badge.textContent = "выключен";
+        row.appendChild(badge);
+      }
+
+      attachLongPress(
+        row,
+        () =>
+          openContextMenu(row, [
+            { label: "Конфигурация", icon: ICON_BRACES, onSelect: () => openNodeConfig({ id: item.id }) },
+          ]),
+        (e) => startDrag(row, e, saveSubscriptionOrder)
+      );
+      box.appendChild(row);
+    });
+  }
+
+  async function saveSubscriptionOrder(rows) {
+    const items = rows.map((r) => r.dataset.itemId).filter(Boolean);
+    if (items.length < 2) return;
+    try {
+      await api("/api/admin/subscription/order", {
+        method: "POST",
+        body: JSON.stringify({ items: items }),
+      });
+      showToast("Порядок в подписке сохранён");
+    } catch (e) {
+      showToast(e.message, true);
+    }
+    await refreshAdmin();
+  }
+
   // Последняя сводка по нодам — шторка протоколов перерисовывается по ней
   // после действия над строкой.
   let lastAdminNodes = [];
@@ -2730,11 +2780,11 @@
 
       card.appendChild(head);
       card.dataset.machine = n.machine_id;
-      attachLongPress(
-        card,
-        () => openNodeMenu(card, n),
-        (e) => startDrag(card, e, saveNodeOrder)
-      );
+      // Без перетаскивания: порядок задаётся в разделе «Порядок в
+      // подписке», где видно все серверы разом. Будь их два, одно тихо
+      // отменяло бы другое — карточка машины стаскивала бы свои строки
+      // обратно в кучу.
+      attachLongPress(card, () => openNodeMenu(card, n));
 
       if (!n.enabled) card.classList.add("off");
 
@@ -2994,6 +3044,7 @@
     const data = await api("/api/admin/overview");
     adminTotals = data.totals;
     renderAdminTiles(adminTotals, undefined);
+    renderSubscriptionOrder(data.subscription || []);
     renderAdminNodes(data.nodes || []);
     renderAdminPromos(data.promos || []);
     renderAdminPromoForm();

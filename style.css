@@ -2285,6 +2285,12 @@ body.scroll-locked {
   -webkit-overflow-scrolling: touch;
 }
 
+/* Строка порядка подписки — тот же вид, что у строки протокола, но со
+   своим отступом снизу: список живёт прямо на странице, а не в шторке. */
+.sub-row {
+  background: var(--surface);
+}
+
 .proto-list {
   display: flex;
   flex-direction: column;
