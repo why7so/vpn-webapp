@@ -17,7 +17,7 @@
   </script>
   <title>Личный кабинет</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=71" />
+  <link rel="stylesheet" href="style.css?v=72" />
 </head>
 <body>
   <div id="app">
@@ -333,12 +333,11 @@
 
         <div class="stat-grid" id="admin-tiles"></div>
 
-        <!-- Порядок серверов в подписке — плоским списком, как его видит
-             пользователь: обходная группа одной строкой, «Автовыбор»
-             такой же строкой, которую можно поставить куда угодно. -->
-        <div class="section-title">Порядок в подписке</div>
-        <div class="admin-note">Зажмите сервер и потяните — так он встанет в подписке у всех.</div>
-        <div id="admin-subscription" class="proto-list"></div>
+        <!-- Список серверов открывается кнопкой, а не лежит на странице:
+             смотрят его редко, а места он занимает больше, чем ноды. -->
+        <button class="btn secondary btn-standalone" id="subscription-order-btn">
+          Конфигурация подписки
+        </button>
 
         <div class="section-title">Ноды</div>
         <div id="admin-nodes"></div>
@@ -498,6 +497,21 @@
     <!-- Конфигурация строки: слева то, что лежит в базе, справа — то, что
          уезжает клиенту. Моноширинный блок со своей прокруткой: конфиг
          длинный, а шторка не должна растягиваться на весь экран. -->
+    <!-- Порядок серверов в подписке — плоским списком, как его видит
+         пользователь: обходная группа одной строкой, «Автовыбор» такой же
+         строкой, которую можно поставить куда угодно. -->
+    <div id="subscription-order-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="sheet-handle" aria-hidden="true"></div>
+        <div class="modal-title">Конфигурация подписки</div>
+        <div class="email-hint">
+          Так серверы видит пользователь. Зажмите и потяните — порядок сразу встанет у всех.
+        </div>
+        <div id="admin-subscription" class="proto-list"></div>
+        <button class="btn btn-standalone" id="subscription-order-close">Закрыть</button>
+      </div>
+    </div>
+
     <div id="node-config-modal" class="modal-overlay hidden">
       <div class="modal-card">
         <div class="sheet-handle" aria-hidden="true"></div>
@@ -662,6 +676,6 @@
   </div>
 
   <script src="config.js?v=4"></script>
-  <script src="app.js?v=71"></script>
+  <script src="app.js?v=72"></script>
 </body>
 </html>

@@ -2285,10 +2285,19 @@ body.scroll-locked {
   -webkit-overflow-scrolling: touch;
 }
 
-/* Строка порядка подписки — тот же вид, что у строки протокола, но со
-   своим отступом снизу: список живёт прямо на странице, а не в шторке. */
+/* Строка порядка подписки — тот же вид, что у строки протокола. Адрес
+   не переносим: в этом списке важно, ЧТО и в каком порядке, а не весь
+   хвост домена — перенос ломал строку на три и наезжал на бейдж. */
 .sub-row {
   background: var(--surface);
+}
+
+.sub-row .proto-row-name,
+.sub-row .proto-row-id {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  word-break: normal;
 }
 
 .proto-list {

@@ -251,6 +251,9 @@
     adminTiles: document.getElementById("admin-tiles"),
     adminNodes: document.getElementById("admin-nodes"),
     adminSubscription: document.getElementById("admin-subscription"),
+    subscriptionOrderBtn: document.getElementById("subscription-order-btn"),
+    subscriptionOrderModal: document.getElementById("subscription-order-modal"),
+    subscriptionOrderClose: document.getElementById("subscription-order-close"),
     adminPromos: document.getElementById("admin-promos"),
     adminPromoCode: document.getElementById("admin-promo-code"),
     adminPromoType: document.getElementById("admin-promo-type"),
@@ -2460,6 +2463,17 @@
     await afterRowAction();
   }
 
+  // Конфигурация сервера открывается ИЗ шторки порядка, а две шторки
+  // друг над другом не складываются — z-index у них общий. Закрываем
+  // первую и открываем вторую, как со списком протоколов.
+  function withOrderClosed(open) {
+    if (els.subscriptionOrderModal.classList.contains("hidden")) {
+      open();
+      return;
+    }
+    closeSheet(els.subscriptionOrderModal, open);
+  }
+
   // ---------- превью конфигурации ----------
   // Два вида одного и того же сервера: как лежит в базе и как уедет
   // клиенту. Держим оба под рукой — переключение вкладок не ходит на
@@ -2713,13 +2727,23 @@
         row,
         () =>
           openContextMenu(row, [
-            { label: "Конфигурация", icon: ICON_BRACES, onSelect: () => openNodeConfig({ id: item.id }) },
+            {
+              label: "Конфигурация",
+              icon: ICON_BRACES,
+              onSelect: () => withOrderClosed(() => openNodeConfig({ id: item.id })),
+            },
           ]),
         (e) => startDrag(row, e, saveSubscriptionOrder)
       );
       box.appendChild(row);
     });
   }
+
+  els.subscriptionOrderBtn.onclick = () => els.subscriptionOrderModal.classList.remove("hidden");
+  els.subscriptionOrderClose.onclick = () => closeSheet(els.subscriptionOrderModal);
+  els.subscriptionOrderModal.onclick = (e) => {
+    if (e.target === els.subscriptionOrderModal) closeSheet(els.subscriptionOrderModal);
+  };
 
   async function saveSubscriptionOrder(rows) {
     const items = rows.map((r) => r.dataset.itemId).filter(Boolean);
